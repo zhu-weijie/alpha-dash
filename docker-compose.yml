@@ -28,5 +28,18 @@ services:
       PROJECT_NAME: "${PROJECT_NAME:-alpha-dash}"
       ALGORITHM: "${ALGORITHM:-HS256}"
 
+  frontend:
+    build: ./frontend
+    container_name: alphadash_frontend_container
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    stdin_open: true
+    tty: true
+
 volumes:
   postgres_data:
