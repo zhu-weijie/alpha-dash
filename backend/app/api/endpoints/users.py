@@ -1,8 +1,9 @@
 # app/api/endpoints/users.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app import crud, schemas, models # noqa
+from app import crud, schemas, models
 from app.db.session import get_db
+from app.auth.dependencies import get_current_active_user
 
 router = APIRouter()
 
@@ -23,3 +24,13 @@ def create_new_user(
         )
     new_user = crud.create_user(db=db, user_in=user_in)
     return new_user
+
+
+@router.get("/me", response_model=schemas.User)
+async def read_users_me(
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    Get current user.
+    """
+    return current_user

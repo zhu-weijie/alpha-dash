@@ -1,9 +1,10 @@
 # app/auth/security.py
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from app.core.config import settings
+from app import schemas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -26,6 +27,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-# def decode_access_token(token: str):
-#     # ...
-#     pass
+def decode_access_token(token: str) -> schemas.TokenData | None:
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        # 'sub' is expected to be the email in our case
+        email: str | None = payload.get("sub")
+        if email is None:
+            return None # Or raise an exception for missing 'sub'
+        return schemas.TokenData(sub=email) # Or TokenData(username=username) if you used that
+    except JWTError: # Catches various errors like ExpiredSignatureError, InvalidTokenError
+        return None
