@@ -8,3 +8,8 @@ from .crud_asset import (
     update_asset, 
     remove_asset
 ) # noqa
+from .crud_portfolio_holding import (
+    create_portfolio_holding,
+    get_portfolio_holdings_by_user,
+    get_portfolio_holding
+) # noqa
