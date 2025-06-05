@@ -12,5 +12,21 @@ services:
       - POSTGRES_DB=alphadash_db
     restart: unless-stopped
 
+  backend:
+    build: ./backend
+    container_name: alphadash_backend_container
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql://alphadash_user:alphadash_pass@db:5432/alphadash_db"
+      SECRET_KEY: "${SECRET_KEY}"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "${ACCESS_TOKEN_EXPIRE_MINUTES:-30}"
+      PROJECT_NAME: "${PROJECT_NAME:-alpha-dash}"
+      ALGORITHM: "${ALGORITHM:-HS256}"
+
 volumes:
   postgres_data:
