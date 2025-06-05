@@ -2,3 +2,8 @@
 from .user import User, UserCreate # noqa
 from .token import Token, TokenData # noqa
 from .asset import Asset, AssetCreate, AssetUpdate # noqa
+from .portfolio_holding import (
+    PortfolioHolding, 
+    PortfolioHoldingCreate,
+    PortfolioHoldingSimple
+) # noqa
