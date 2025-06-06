@@ -12,6 +12,7 @@ pydantic-settings==2.9.1
 alembic==1.16.1
 python-multipart==0.0.20
 requests==2.32.3
+requests-mock==1.12.1
 
 black==25.1.0
 ruff==0.11.12
