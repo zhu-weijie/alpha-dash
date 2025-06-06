@@ -7,6 +7,7 @@ from app.core.config import settings
 
 ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co/query"
 
+
 def fetch_current_price(symbol: str) -> Optional[float]:
     if not settings.ALPHA_VANTAGE_API_KEY:
         print("Warning: ALPHA_VANTAGE_API_KEY not configured.")
@@ -19,23 +20,24 @@ def fetch_current_price(symbol: str) -> Optional[float]:
     }
     try:
         response = requests.get(ALPHA_VANTAGE_BASE_URL, params=params)
-        response.raise_for_status()  # Raises an HTTPError for bad responses (4XX or 5XX)
+        response.raise_for_status()
         data = response.json()
         
         global_quote = data.get("Global Quote")
-        if global_quote and "05. price" in global_quote:
-            return float(global_quote["05. price"])
-        elif "Note" in data: # Handle API limit note
+        if global_quote:
+            # Attempt the access that might raise KeyError
+            return float(global_quote["05. price"]) # This will raise KeyError if "05. price" is missing
+        elif "Note" in data:
             print(f"Alpha Vantage API Note for {symbol} (current price): {data['Note']}")
             return None
-        else:
-            print(f"Could not parse current price for {symbol} from Alpha Vantage: {data}")
+        else: # This case might now be less likely if global_quote is None or the structure is very different
+            print(f"Unexpected response structure for {symbol} (current price): {data}")
             return None
     except requests.exceptions.RequestException as e:
         print(f"Error fetching current price for {symbol} from Alpha Vantage: {e}")
         return None
-    except (ValueError, KeyError) as e: # Handles JSON decoding errors or missing keys
-        print(f"Error parsing current price data for {symbol}: {e}")
+    except (ValueError, KeyError) as e: # Now, a missing "05. price" will be caught here
+        print(f"Error parsing current price data for {symbol}: {e}") # Test expects this
         return None
 
 
