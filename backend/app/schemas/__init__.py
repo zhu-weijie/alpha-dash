@@ -7,3 +7,4 @@ from .portfolio_holding import (
     PortfolioHoldingCreate,
     PortfolioHoldingSimple
 ) # noqa
+from .financial_data import AssetCurrentPrice, HistoricalPricePoint # noqa

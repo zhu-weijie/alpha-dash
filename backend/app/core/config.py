@@ -1,6 +1,7 @@
 # backend/app/core/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+from typing import Optional
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "alpha-dash"
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"
+    ALPHA_VANTAGE_API_KEY: Optional[str] = None
 
     # model_config is the Pydantic V2 way to configure model behavior
     model_config = SettingsConfigDict(
