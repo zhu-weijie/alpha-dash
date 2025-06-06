@@ -8,3 +8,4 @@ from .portfolio_holding import (
     PortfolioHoldingSimple
 ) # noqa
 from .financial_data import AssetCurrentPrice, HistoricalPricePoint # noqa
+from .portfolio_summary import PortfolioSummary # noqa
