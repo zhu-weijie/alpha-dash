@@ -23,6 +23,12 @@ class PortfolioHolding(PortfolioHoldingBase):
     created_at: datetime
     asset_info: Optional[Asset] = None # Nested Asset schema
 
+    # New calculated fields
+    current_price: Optional[float] = None
+    current_value: Optional[float] = None
+    gain_loss: Optional[float] = None
+    gain_loss_percent: Optional[float] = None # Added for more utility
+
     model_config = {
         "from_attributes": True
     }
