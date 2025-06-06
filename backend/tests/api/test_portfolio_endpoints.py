@@ -205,3 +205,75 @@ def test_view_user_portfolio_summary_no_holdings(
         mock_crud_get_holdings.assert_called_once() # Further refinement needed to check args if mock_db_session_fixture is not passed here
         
         mock_fetch_price.assert_not_called() # No holdings, so no price fetching should occur
+
+
+def test_view_user_portfolio_summary_price_fetch_fails(
+    client_with_auth_override: TestClient,
+    mock_current_user_fixture: models.User, 
+    mock_db_session_fixture: Session
+):
+    client = client_with_auth_override # Use the client from the fixture
+
+    now_utc = datetime.now(timezone.utc) # For consistent timestamps
+
+    # Prepare mock Asset and PortfolioHolding data, including created_at
+    mock_asset_aapl = models.Asset(
+        id=1, 
+        symbol="AAPL", 
+        name="Apple Inc.", 
+        asset_type=AssetType.STOCK,
+        created_at=now_utc # Essential for Pydantic validation
+    )
+    mock_holding_aapl = models.PortfolioHolding(
+        id=101, 
+        user_id=mock_current_user_fixture.id, 
+        asset_id=1, 
+        quantity=10,
+        purchase_price=150.0, 
+        purchase_date=now_utc,
+        asset_info=mock_asset_aapl, # Simulate eager loaded data
+        created_at=now_utc # Essential for Pydantic validation
+    )
+    mock_holdings_list = [mock_holding_aapl]
+
+    # Patch the dependencies/services called by the endpoint logic
+    # get_current_active_user and get_db are handled by the client_with_auth_override fixture
+    with patch("app.api.endpoints.portfolio.crud.get_portfolio_holdings_by_user", return_value=mock_holdings_list) as mock_crud_get_holdings, \
+         patch("app.api.endpoints.portfolio.fds.fetch_current_price", return_value=None) as mock_fetch_price: # Simulate price fetch failure
+
+        # Make the API call
+        response = client.get(f"{settings.API_V1_STR}/portfolio/holdings/")
+        
+        # Assertions
+        assert response.status_code == 200
+        data = response.json()
+
+        expected_purchase_value = 10 * 150.0  # 1500.0
+        assert data["total_purchase_value"] == pytest.approx(expected_purchase_value)
+        assert data["total_current_value"] == pytest.approx(0.0) # Price fetch failed, so current value is 0
+        assert data["total_gain_loss"] == pytest.approx(0.0 - expected_purchase_value) # -1500.0
+        
+        # For total_gain_loss_percent
+        # Your logic: if total_purchase_value > 0: (total_gain_loss / total_purchase_value) * 100
+        # else: (0.0 if total_current_value == 0 else None)
+        # Here, total_purchase_value = 1500 > 0. So, (-1500 / 1500) * 100 = -100.0
+        expected_gain_loss_percent = (-1500.0 / 1500.0) * 100
+        assert data["total_gain_loss_percent"] == pytest.approx(expected_gain_loss_percent)
+        
+        assert len(data["holdings"]) == 1
+        aapl_holding_resp = data["holdings"][0]
+        
+        assert aapl_holding_resp["asset_info"]["symbol"] == "AAPL"
+        assert aapl_holding_resp["current_price"] is None
+        assert aapl_holding_resp["current_value"] is None
+        assert aapl_holding_resp["gain_loss"] is None
+        assert aapl_holding_resp["gain_loss_percent"] is None # Because current_value is None
+
+        # Verify mocks
+        mock_crud_get_holdings.assert_called_once_with(
+            db=mock_db_session_fixture, 
+            user_id=mock_current_user_fixture.id, 
+            skip=0, 
+            limit=100
+        )
+        mock_fetch_price.assert_called_once_with("AAPL")
