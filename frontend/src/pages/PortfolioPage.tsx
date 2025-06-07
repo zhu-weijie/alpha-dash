@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { getPortfolioSummary } from '../services/apiService';
 import { PortfolioSummary, PortfolioHolding } from '../types/portfolio';
+import { Link as RouterLink } from 'react-router-dom';
 
 const PortfolioPage: React.FC = () => {
     const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
@@ -92,7 +93,13 @@ const PortfolioPage: React.FC = () => {
                             return (
                                 <tr key={holding.id}>
                                     <td style={tdStyle}>{holding.asset_info?.name || 'N/A'}</td>
-                                    <td style={tdStyle}>{holding.asset_info?.symbol || 'N/A'}</td>
+                                    <td style={tdStyle}>
+                                        {holding.asset_info?.symbol ? (
+                                            <RouterLink to={`/assets/${holding.asset_info.symbol}/chart`}>
+                                                {holding.asset_info.symbol}
+                                            </RouterLink>
+                                        ) : 'N/A'}
+                                    </td>
                                     <td style={tdStyle}>{holding.quantity.toFixed(4)}</td>
                                     <td style={tdStyle}>{formatCurrency(holding.purchase_price)}</td>
                                     <td style={tdStyle}>{formatCurrency(purchaseValue)}</td>
