@@ -2,6 +2,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
 import PortfolioPage from './pages/PortfolioPage';
+import AssetDetailPage from './pages/AssetDetailPage';
 // import LoginPage from './pages/LoginPage';
 // import RegisterPage from './pages/RegisterPage';
 // import HomePage from './pages/HomePage';
@@ -53,6 +54,14 @@ function App() {
                                 <PortfolioPage />
                             </ProtectedRoute>
                         } 
+                    />
+                    <Route 
+                        path="/assets/:symbol/chart"
+                        element={
+                            <ProtectedRoute>
+                                <AssetDetailPage />
+                            </ProtectedRoute>
+                        }
                     />
                     <Route path="/" element={<div><h1>Welcome to AlphaDash</h1><p>Please log in to see your portfolio.</p></div>} />
                     <Route path="/login" element={<div><h2>Login Page Placeholder</h2><p>Implement actual login form here which sets 'authToken' in localStorage.</p><button onClick={() => { localStorage.setItem('authToken', 'fake-test-token'); window.location.href = '/portfolio';}}>Simulate Login</button></div>} />
