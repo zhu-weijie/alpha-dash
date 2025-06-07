@@ -3,42 +3,44 @@ import React, { useEffect, useState } from 'react';
 import { getPortfolioSummary } from '../services/apiService';
 import { PortfolioSummary, PortfolioHolding } from '../types/portfolio';
 import { Link as RouterLink } from 'react-router-dom';
+import AddHoldingForm from '../components/Portfolio/AddHoldingForm';
+
 
 const PortfolioPage: React.FC = () => {
     const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+
+    const fetchPortfolioData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await getPortfolioSummary();
+            setPortfolio(data);
+        } catch (err: any) {
+            setError(err.message || 'Failed to fetch portfolio data.');
+            if (err.response && err.response.status === 401) {
+                 setError('Unauthorized. Please log in again.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchPortfolio = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const data = await getPortfolioSummary();
-                setPortfolio(data);
-            } catch (err: any) {
-                setError(err.message || 'Failed to fetch portfolio data.');
-                if (err.response && err.response.status === 401) {
-                    // Handle unauthorized, e.g., clear token and redirect
-                    // localStorage.removeItem('authToken');
-                    // navigate('/login');
-                    setError('Unauthorized. Please log in again.');
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        // Check for token before fetching. If no token, redirect or show message.
         const token = localStorage.getItem('authToken');
         if (!token) {
             setError('You must be logged in to view your portfolio.');
             setLoading(false);
             return;
         }
-
-        fetchPortfolio();
+        fetchPortfolioData();
     }, []);
+
+    const handleHoldingAdded = () => {
+        fetchPortfolioData();
+    };
 
     if (loading) return <p>Loading portfolio...</p>;
     if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
@@ -58,6 +60,15 @@ const PortfolioPage: React.FC = () => {
         <div>
             <h2>My Portfolio</h2>
             
+            <button onClick={() => setIsAddModalOpen(true)} style={{ marginBottom: '20px' }}>
+                Add New Holding
+            </button>
+            <AddHoldingForm 
+                isOpen={isAddModalOpen} 
+                onClose={() => setIsAddModalOpen(false)}
+                onHoldingAdded={handleHoldingAdded}
+            />
+
             <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
                 <h4>Summary</h4>
                 <p>Total Invested: {formatCurrency(portfolio.total_purchase_value)}</p>

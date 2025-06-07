@@ -1,7 +1,8 @@
 // src/services/apiService.ts
 import axios from 'axios';
-import { PortfolioSummary } from '../types/portfolio';
+import { PortfolioSummary, PortfolioHolding, BackendPortfolioHoldingCreate } from '../types/portfolio';
 import { HistoricalPricePoint } from '../types/marketData';
+import { Asset } from '../types/asset';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -42,6 +43,41 @@ export const getAssetHistoricalData = async (
         return response.data;
     } catch (error) {
         console.error(`Error fetching historical data for ${symbol}:`, error);
+        throw error;
+    }
+};
+
+export const getAssetBySymbol = async (symbol: string): Promise<Asset | null> => {
+    try {
+        const response = await axios.get<Asset[]>(
+            `${API_BASE_URL}/assets/?symbol=${symbol.toUpperCase()}`,
+            { headers: getAuthHeaders() }
+        );
+        if (response.data && response.data.length > 0) {
+            return response.data[0];
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching asset by symbol ${symbol}:`, error);
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+        throw error;
+    }
+};
+
+export const addPortfolioHolding = async (
+    holdingData: BackendPortfolioHoldingCreate
+): Promise<PortfolioHolding> => {
+    try {
+        const response = await axios.post<PortfolioHolding>(
+            `${API_BASE_URL}/portfolio/holdings/`,
+            holdingData,
+            { headers: getAuthHeaders() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Error adding portfolio holding:", error);
         throw error;
     }
 };

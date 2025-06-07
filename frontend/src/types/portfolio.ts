@@ -24,3 +24,17 @@ export interface PortfolioSummary {
     total_gain_loss_percent?: number | null;
     holdings: PortfolioHolding[];
 }
+
+export interface PortfolioHoldingCreatePayload {
+    symbol: string;
+    quantity: number;
+    purchase_price: number;
+    purchase_date: string;
+}
+
+export interface BackendPortfolioHoldingCreate {
+    asset_id: number;
+    quantity: number;
+    purchase_price: number;
+    purchase_date: string;
+}

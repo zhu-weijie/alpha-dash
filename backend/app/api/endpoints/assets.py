@@ -1,7 +1,7 @@
 # app/api/endpoints/assets.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List, Any
+from typing import List, Any, Optional
 
 from app import crud, models, schemas
 from app.db.session import get_db
@@ -33,11 +33,15 @@ def read_assets_list(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
+    symbol: Optional[str] = Query(None, min_length=1, max_length=50)
     # current_user: models.User = Depends(get_current_active_user) # Public for now
 ) -> Any:
     """
     Retrieve a list of assets with pagination.
     """
+    if symbol:
+        asset = crud.get_asset_by_symbol(db, symbol=symbol)
+        return [asset] if asset else [] # Return as list or empty list
     assets = crud.get_assets(db, skip=skip, limit=limit)
     return assets
 
