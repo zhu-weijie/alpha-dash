@@ -1,6 +1,7 @@
 // src/services/apiService.ts
 import axios from 'axios';
 import { PortfolioSummary } from '../types/portfolio';
+import { HistoricalPricePoint } from '../types/marketData';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -29,4 +30,18 @@ export const getPortfolioSummary = async (): Promise<PortfolioSummary> => {
     }
 };
 
-// export const loginUser = async (credentials) => { ... store token in localStorage ... }
+export const getAssetHistoricalData = async (
+    symbol: string,
+    outputsize: 'compact' | 'full' = 'compact'
+): Promise<HistoricalPricePoint[]> => {
+    try {
+        const response = await axios.get<HistoricalPricePoint[]>(
+            `${API_BASE_URL}/market-data/${symbol}/history?outputsize=${outputsize}`,
+            // { headers: getAuthHeaders() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching historical data for ${symbol}:`, error);
+        throw error;
+    }
+};
