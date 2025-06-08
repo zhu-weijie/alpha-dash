@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
 import PortfolioPage from './pages/PortfolioPage';
 import AssetDetailPage from './pages/AssetDetailPage';
+import ManageAssetsPage from './pages/ManageAssetsPage';
 // import LoginPage from './pages/LoginPage';
 // import RegisterPage from './pages/RegisterPage';
 // import HomePage from './pages/HomePage';
@@ -10,17 +11,14 @@ import AssetDetailPage from './pages/AssetDetailPage';
 const isAuthenticated = () => !!localStorage.getItem('authToken');
 
 interface ProtectedRouteProps {
-  children: React.ReactNode; // Use React.ReactNode for more flexibility
+  children: React.ReactNode;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (!isAuthenticated()) {
       return <Navigate to="/login" replace />;
   }
-  // If children can be other things than JSX.Element, you might need to wrap it
-  // but if you always pass a component like <PortfolioPage />, it should be fine.
-  // For safety, you can return <>{children}</> if children might be a string or number.
-  return <>{children}</>; // Using a fragment <> is safe and common
+  return <>{children}</>;
 };
 
 
@@ -39,6 +37,7 @@ function App() {
                         {!isAuthenticated() && <li><Link to="/login">Login</Link></li>}
                         {!isAuthenticated() && <li><Link to="/register">Register</Link></li>}
                         {isAuthenticated() && <li><Link to="/portfolio">My Portfolio</Link></li>}
+                        {isAuthenticated() && <li><Link to="/manage-assets">Manage Assets</Link></li>}
                         {isAuthenticated() && <li><button onClick={handleLogout}>Logout</button></li>}
                     </ul>
                 </nav>
@@ -60,6 +59,14 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <AssetDetailPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route 
+                        path="/manage-assets"
+                        element={
+                            <ProtectedRoute>
+                                <ManageAssetsPage />
                             </ProtectedRoute>
                         }
                     />
