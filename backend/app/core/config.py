@@ -7,23 +7,31 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "alpha-dash"
     API_V1_STR: str = "/api/v1"
 
-    # Database
     DATABASE_URL: str
 
-    # JWT
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"
     ALPHA_VANTAGE_API_KEY: Optional[str] = None
 
-    # model_config is the Pydantic V2 way to configure model behavior
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
+    @property
+    def REDIS_URL(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+    
+    @property
+    def SHARED_CACHE_REDIS_URL(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/1"
+
     model_config = SettingsConfigDict(
-        env_file=".env",      # Specifies the .env file to load
-        extra="ignore"        # Ignores extra fields found in the environment or .env file
+        env_file=".env",
+        extra="ignore"
     )
 
-@lru_cache() # Caches the result of get_settings() for performance
+@lru_cache()
 def get_settings():
     return Settings()
 
-settings = get_settings() # Make settings instance available for import elsewhere
+settings = get_settings()
