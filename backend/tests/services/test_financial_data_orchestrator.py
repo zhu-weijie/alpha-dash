@@ -266,19 +266,33 @@ def test_get_historical_data_crypto_cache_miss_then_hit(
     mock_fetch_av_crypto_hist.assert_not_called()
 
 
-@patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_historical_data", return_value=None)
-def test_get_historical_data_provider_returns_none(mock_fetch_av_stock_hist, monkeypatch):
-    monkeypatch.setattr("app.core.config.settings.ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST")
+@patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_historical_data")
+@patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_historical_data")
+def test_get_historical_data_provider_returns_none(
+    mock_fetch_yf_stock_hist: MagicMock,
+    mock_fetch_av_stock_hist: MagicMock,
+    monkeypatch
+):
+    monkeypatch.setattr(settings, "ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST_AV")
+    
     symbol = "FAILHIST"
     asset_type = "stock"
+    outputsize = "compact"
+    yf_period_expected = "3mo"
 
-    history = orchestrator.get_historical_data(symbol, asset_type)
-    assert history is None
-    mock_fetch_av_stock_hist.assert_called_once_with(symbol.upper(), outputsize="compact")
-    # Check cache based on your orchestrator's logic for caching None/empty lists
-    # Current orchestrator caches empty list, but not None for history
-    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_compact_hist"
-    assert orchestrator._cache["history_cache"].get(cache_key) is None
+    mock_fetch_yf_stock_hist.return_value = None
+    mock_fetch_av_stock_hist.return_value = None
+
+    history = orchestrator.get_historical_data(symbol, asset_type, outputsize)
+    
+    assert history is None, "History should be None if all providers fail"
+    
+    mock_fetch_yf_stock_hist.assert_called_once_with(symbol, asset_type, period=yf_period_expected)
+    
+    mock_fetch_av_stock_hist.assert_called_once_with(symbol.upper(), outputsize=outputsize) 
+    
+    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_{yf_period_expected}_hist"
+    assert cache_key not in orchestrator._cache["history_cache"], "None should not be cached for history"
 
 
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_historical_data")
