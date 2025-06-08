@@ -11,3 +11,9 @@ export interface Asset {
     asset_type: AssetType;
     created_at: string;
 }
+
+export interface AssetCreatePayload {
+    symbol: string;
+    name: string;
+    asset_type: AssetType;
+}
