@@ -37,6 +37,7 @@ function App() {
                         {!isAuthenticated() && <li><Link to="/login">Login</Link></li>}
                         {!isAuthenticated() && <li><Link to="/register">Register</Link></li>}
                         {isAuthenticated() && <li><Link to="/portfolio">My Portfolio</Link></li>}
+                        {isAuthenticated() && <li><Link to="/manage-assets">Manage Assets</Link></li>}
                         {isAuthenticated() && <li><button onClick={handleLogout}>Logout</button></li>}
                     </ul>
                 </nav>
