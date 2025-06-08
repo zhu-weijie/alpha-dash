@@ -6,7 +6,7 @@ from typing import List, Any
 from app import crud, models, schemas
 from app.db.session import get_db
 from app.auth.dependencies import get_current_active_user
-from app.services import financial_data_service as fds
+from app.services import get_current_price, get_historical_data
 
 router = APIRouter()
 
@@ -37,7 +37,7 @@ def add_asset_to_portfolio(
     holding_response.asset_info = asset_schema
     
     # Fetch current price for the newly added holding for immediate display if desired
-    current_price = fds.fetch_current_price(holding_model.asset_info.symbol)
+    current_price = get_current_price(holding_model.asset_info.symbol)
     if current_price is not None:
         holding_response.current_price = current_price
         holding_response.current_value = holding_model.quantity * current_price
@@ -75,7 +75,7 @@ def view_user_portfolio_summary(
             holding_schema.asset_info = schemas.Asset.model_validate(db_holding.asset_info)
             
             # Fetch current price for the asset
-            current_price = fds.fetch_current_price(db_holding.asset_info.symbol)
+            current_price = get_current_price(db_holding.asset_info.symbol)
             
             purchase_value_of_holding = db_holding.quantity * db_holding.purchase_price
             total_purchase_value += purchase_value_of_holding
@@ -128,7 +128,7 @@ def view_single_portfolio_holding(
     holding_response = schemas.PortfolioHolding.model_validate(db_holding)
     if db_holding.asset_info:
         holding_response.asset_info = schemas.Asset.model_validate(db_holding.asset_info)
-        current_price = fds.fetch_current_price(db_holding.asset_info.symbol)
+        current_price = get_current_price(db_holding.asset_info.symbol)
         if current_price is not None:
             holding_response.current_price = current_price
             holding_response.current_value = db_holding.quantity * current_price

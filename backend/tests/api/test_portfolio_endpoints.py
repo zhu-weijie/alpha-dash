@@ -1,7 +1,7 @@
 # backend/tests/api/test_portfolio_endpoints.py
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock # Keep patch for CRUD and FDS
+from unittest.mock import patch, MagicMock
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
@@ -110,7 +110,7 @@ def test_view_user_portfolio_summary_success(
     # Patch the services that are called *within* the endpoint, after dependencies are resolved.
     # The target for patch is where the function is *looked up*.
     with patch("app.api.endpoints.portfolio.crud.get_portfolio_holdings_by_user", return_value=mock_holdings_list) as mock_crud_get_holdings, \
-         patch("app.api.endpoints.portfolio.fds.fetch_current_price") as mock_fetch_price:
+         patch("app.api.endpoints.portfolio.get_current_price") as mock_fetch_price:
 
         # Configure mock_fetch_price side effect
         def side_effect_fetch_price(symbol):
@@ -180,7 +180,7 @@ def test_view_user_portfolio_summary_no_holdings(
     # and the financial data service (though it shouldn't be called).
     # The get_current_active_user and get_db are handled by the client_with_auth_override fixture.
     with patch("app.api.endpoints.portfolio.crud.get_portfolio_holdings_by_user", return_value=[]) as mock_crud_get_holdings, \
-         patch("app.api.endpoints.portfolio.fds.fetch_current_price") as mock_fetch_price:
+         patch("app.api.endpoints.portfolio.get_current_price") as mock_fetch_price:
 
         response = client.get(f"{settings.API_V1_STR}/portfolio/holdings/")
         
@@ -239,7 +239,7 @@ def test_view_user_portfolio_summary_price_fetch_fails(
     # Patch the dependencies/services called by the endpoint logic
     # get_current_active_user and get_db are handled by the client_with_auth_override fixture
     with patch("app.api.endpoints.portfolio.crud.get_portfolio_holdings_by_user", return_value=mock_holdings_list) as mock_crud_get_holdings, \
-         patch("app.api.endpoints.portfolio.fds.fetch_current_price", return_value=None) as mock_fetch_price: # Simulate price fetch failure
+         patch("app.api.endpoints.portfolio.get_current_price", return_value=None) as mock_fetch_price: # Simulate price fetch failure
 
         # Make the API call
         response = client.get(f"{settings.API_V1_STR}/portfolio/holdings/")
