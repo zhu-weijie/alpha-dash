@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { PortfolioSummary, PortfolioHolding, BackendPortfolioHoldingCreate } from '../types/portfolio';
 import { HistoricalPricePoint } from '../types/marketData';
-import { Asset } from '../types/asset';
+import { Asset, AssetCreatePayload } from '../types/asset';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -78,6 +78,22 @@ export const addPortfolioHolding = async (
         return response.data;
     } catch (error) {
         console.error("Error adding portfolio holding:", error);
+        throw error;
+    }
+};
+
+export const createAsset = async (
+    assetData: AssetCreatePayload
+): Promise<Asset> => {
+    try {
+        const response = await axios.post<Asset>(
+            `${API_BASE_URL}/assets/`,
+            assetData,
+            { headers: getAuthHeaders() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Error creating asset:", error);
         throw error;
     }
 };
