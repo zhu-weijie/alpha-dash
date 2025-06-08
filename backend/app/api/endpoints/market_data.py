@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, status, Query
 from typing import List, Optional
 from datetime import datetime
 
-from app.services import financial_data_service as fds
+from app.services import get_current_price, get_historical_data
 from app import schemas
 
 router = APIRouter()
@@ -13,7 +13,7 @@ async def get_asset_current_price(symbol: str):
     """
     Get the current market price for a given asset symbol.
     """
-    price = fds.fetch_current_price(symbol)
+    price = get_current_price(symbol)
     if price is None:
         # Decide if 404 is appropriate or if service layer should raise specific errors
         raise HTTPException(
@@ -31,7 +31,7 @@ async def get_asset_historical_data(
     Get historical daily price data for a given asset symbol.
     - `outputsize`: "compact" (last 100 data points) or "full" (entire history).
     """
-    history = fds.fetch_historical_data(symbol, outputsize=outputsize)
+    history = get_historical_data(symbol, outputsize=outputsize)
     if history is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
