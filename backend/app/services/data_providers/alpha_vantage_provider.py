@@ -119,7 +119,3 @@ def fetch_av_crypto_historical_data(crypto_symbol: str, market_currency: str = "
             return sorted_data if sorted_data else None # Return None if list is empty after processing
     print(f"AV_PROVIDER Could not parse crypto historical for {crypto_symbol} from: {data}")
     return None
-
-# Update data_providers/__init__.py
-# from . import alpha_vantage_provider
-# (This is optional, depends on how you want to import elsewhere)
