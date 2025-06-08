@@ -7,42 +7,43 @@ from datetime import date, datetime, timezone
 
 from app.services import financial_data_orchestrator as orchestrator 
 
-# We need to be able to clear the cache between tests or test runs.
-# A fixture can help manage the cache state or direct manipulation.
 @pytest.fixture(autouse=True)
 def clear_orchestrator_cache():
     """Clears the orchestrator's cache before each test."""
     orchestrator._cache["price_cache"].clear()
     orchestrator._cache["history_cache"].clear()
-    # If CACHE_DURATION_SECONDS is changed by tests, reset it here too if needed.
 
 
-# --- Tests for get_current_price ---
-
-@patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price")
-def test_get_current_price_stock_cache_miss_then_hit(mock_fetch_av_stock_price, monkeypatch):
-    # Ensure API key is considered present by the orchestrator if it checks
+@patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_current_price")
+@patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price") 
+def test_get_current_price_stock_cache_miss_then_hit(
+    mock_fetch_av_stock_price,
+    mock_fetch_yf_current_price,
+    monkeypatch
+):
     monkeypatch.setattr("app.core.config.settings.ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST")
     
     symbol = "AAPL"
     asset_type = "stock"
-    mock_price = 150.75
-    mock_fetch_av_stock_price.return_value = mock_price
+    mock_yf_price = 150.75 # This is the price yfinance should return
+    
+    mock_fetch_yf_current_price.return_value = mock_yf_price
+    mock_fetch_av_stock_price.return_value = 999.99 # Different value for AV to ensure it's not called
 
-    # 1. First call: Cache miss, should call AV provider
     price1 = orchestrator.get_current_price(symbol, asset_type)
-    assert price1 == mock_price
-    mock_fetch_av_stock_price.assert_called_once_with(symbol.upper())
+    assert price1 == mock_yf_price
+    mock_fetch_yf_current_price.assert_called_once_with(symbol, asset_type)
+    mock_fetch_av_stock_price.assert_not_called() # AV should not be called if yf succeeds
 
-    # 2. Second call: Cache hit, should NOT call AV provider again
     price2 = orchestrator.get_current_price(symbol, asset_type)
-    assert price2 == mock_price
-    mock_fetch_av_stock_price.assert_called_once() # Call count remains 1
+    assert price2 == mock_yf_price
+    mock_fetch_yf_current_price.assert_called_once() # Call count remains 1
+    mock_fetch_av_stock_price.assert_not_called()
 
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_crypto_current_price")
 def test_get_current_price_crypto_cache_miss_then_hit(mock_fetch_av_crypto_price, monkeypatch):
     monkeypatch.setattr("app.core.config.settings.ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST")
-    symbol = "ETH" # Orchestrator expects base symbol for crypto
+    symbol = "ETH"
     asset_type = "crypto"
     mock_price = 2000.50
     mock_fetch_av_crypto_price.return_value = mock_price
@@ -50,7 +51,7 @@ def test_get_current_price_crypto_cache_miss_then_hit(mock_fetch_av_crypto_price
     # 1. Cache miss
     price1 = orchestrator.get_current_price(symbol, asset_type)
     assert price1 == mock_price
-    mock_fetch_av_crypto_price.assert_called_once_with(symbol.upper()) # Assumes orchestrator passes base symbol
+    mock_fetch_av_crypto_price.assert_called_once_with(symbol.upper())
 
     # 2. Cache hit
     price2 = orchestrator.get_current_price(symbol, asset_type)
@@ -150,18 +151,29 @@ def test_get_historical_data_provider_returns_none(mock_fetch_av_stock_hist, mon
     assert orchestrator._cache["history_cache"].get(cache_key) is None
 
 
-@patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_historical_data", return_value=[])
-def test_get_historical_data_provider_returns_empty_list(mock_fetch_av_stock_hist, monkeypatch):
+@patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_historical_data")
+@patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_historical_data")
+def test_get_historical_data_provider_returns_empty_list(
+    mock_fetch_yf_stock_hist,
+    mock_fetch_av_stock_hist,
+    monkeypatch
+):
     monkeypatch.setattr("app.core.config.settings.ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST")
     symbol = "EMPTYHIST"
     asset_type = "stock"
+    outputsize = "compact"
 
-    history = orchestrator.get_historical_data(symbol, asset_type)
-    assert history == [] # Orchestrator returns empty list as is
-    mock_fetch_av_stock_hist.assert_called_once_with(symbol.upper(), outputsize="compact")
+    mock_fetch_yf_stock_hist.return_value = None
+    mock_fetch_av_stock_hist.return_value = []
+
+    history = orchestrator.get_historical_data(symbol, asset_type, outputsize)
     
-    # Verify that an empty list is cached (as per orchestrator logic)
-    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_compact_hist"
+    assert history == []
+    mock_fetch_yf_stock_hist.assert_called_once_with(symbol, asset_type, period="3mo")
+    mock_fetch_av_stock_hist.assert_called_once_with(symbol.upper(), outputsize=outputsize)
+
+    yf_period = "3mo"
+    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_{yf_period}_hist"
     cached_entry = orchestrator._cache["history_cache"].get(cache_key)
-    assert cached_entry is not None
-    assert cached_entry[1] == [] # The value part of the cache tuple (timestamp, value)
+    assert cached_entry is not None, "Empty list should be cached"
+    assert cached_entry[1] == [], "Cached value should be an empty list"
