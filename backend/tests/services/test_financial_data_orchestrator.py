@@ -194,26 +194,41 @@ def test_get_current_price_cache_expiration(
     monkeypatch.setattr(orchestrator, "CACHE_DURATION_SECONDS", original_cache_duration)
 
 
-# --- Tests for get_historical_data ---
-
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_historical_data")
-def test_get_historical_data_stock_cache_miss_then_hit(mock_fetch_av_stock_hist, monkeypatch):
-    monkeypatch.setattr("app.core.config.settings.ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST")
+@patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_historical_data")
+def test_get_historical_data_stock_cache_miss_then_hit(
+    mock_fetch_yf_stock_hist: MagicMock,
+    mock_fetch_av_stock_hist: MagicMock,
+    monkeypatch
+):
+    monkeypatch.setattr(settings, "ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST_AV")
+    
     symbol = "MSFT"
     asset_type = "stock"
     outputsize = "compact"
-    mock_hist_data = [{"date": date(2023, 1, 1), "close": 250.0}]
-    mock_fetch_av_stock_hist.return_value = mock_hist_data
+    yf_period_expected = "3mo"
 
-    # 1. Cache miss
+    mock_hist_data_from_yf = [{"date": date(2023, 1, 1), "close": 250.0, "open": 248.0, "high": 252.0, "low": 247.0, "volume": 10000}]
+    
+    mock_fetch_yf_stock_hist.return_value = mock_hist_data_from_yf
+    mock_fetch_av_stock_hist.return_value = [{"date": date(2022, 1, 1), "close": 999.0}]
+
     hist1 = orchestrator.get_historical_data(symbol, asset_type, outputsize)
-    assert hist1 == mock_hist_data
-    mock_fetch_av_stock_hist.assert_called_once_with(symbol.upper(), outputsize=outputsize)
+    
+    assert hist1 == mock_hist_data_from_yf
+    mock_fetch_yf_stock_hist.assert_called_once_with(symbol, asset_type, period=yf_period_expected)
+    mock_fetch_av_stock_hist.assert_not_called()
 
-    # 2. Cache hit
+    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_{yf_period_expected}_hist"
+    assert cache_key in orchestrator._cache["history_cache"]
+    assert orchestrator._cache["history_cache"][cache_key][1] == mock_hist_data_from_yf
+
     hist2 = orchestrator.get_historical_data(symbol, asset_type, outputsize)
-    assert hist2 == mock_hist_data
-    mock_fetch_av_stock_hist.assert_called_once()
+    
+    assert hist2 == mock_hist_data_from_yf
+    mock_fetch_yf_stock_hist.assert_called_once()
+    mock_fetch_av_stock_hist.assert_not_called()
+
 
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_crypto_historical_data")
 def test_get_historical_data_crypto_cache_miss_then_hit(mock_fetch_av_crypto_hist, monkeypatch):
