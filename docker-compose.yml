@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:15-alpine
-    container_name: alphadash_db
+    container_name: alphadash_db_container
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     ports:
@@ -10,6 +10,15 @@ services:
       - POSTGRES_USER=alphadash_user
       - POSTGRES_PASSWORD=alphadash_pass
       - POSTGRES_DB=alphadash_db
+    restart: unless-stopped
+
+  redis_cache:
+    image: redis:7-alpine
+    container_name: alphadash_redis_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_cache_data:/data
     restart: unless-stopped
 
   backend:
@@ -21,12 +30,46 @@ services:
       - ./backend:/app
     depends_on:
       - db
+      - redis_cache
     environment:
       DATABASE_URL: "postgresql://alphadash_user:alphadash_pass@db:5432/alphadash_db"
       SECRET_KEY: "${SECRET_KEY}"
       ACCESS_TOKEN_EXPIRE_MINUTES: "${ACCESS_TOKEN_EXPIRE_MINUTES:-30}"
       PROJECT_NAME: "${PROJECT_NAME:-alpha-dash}"
       ALGORITHM: "HS256"
+      REDIS_HOST: "redis_cache"
+      REDIS_PORT: "6379"
+
+  celery_worker:
+    build: ./backend
+    container_name: alphadash_celery_worker
+    command: celery -A app.core.celery_app worker -l info -Q celery
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+      - redis_cache
+    environment:
+      DATABASE_URL: "postgresql://alphadash_user:alphadash_pass@db:5432/alphadash_db"
+      REDIS_HOST: "redis_cache"
+      REDIS_PORT: "6379"
+      ALPHA_VANTAGE_API_KEY: "${ALPHA_VANTAGE_API_KEY}"
+
+  celery_beat:
+    build: ./backend
+    container_name: alphadash_celery_beat
+    command: celery -A app.core.celery_app beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./backend:/app
+      - celery_beat_schedule:/tmp/celerybeat
+    depends_on:
+      - db
+      - redis_cache
+    environment:
+      DATABASE_URL: "postgresql://alphadash_user:alphadash_pass@db:5432/alphadash_db"
+      REDIS_HOST: "redis_cache"
+      REDIS_PORT: "6379"
+      ALPHA_VANTAGE_API_KEY: "${ALPHA_VANTAGE_API_KEY}"
 
   frontend:
     build: ./frontend
@@ -43,3 +86,5 @@ services:
 
 volumes:
   postgres_data:
+  redis_cache_data:
+  celery_beat_schedule:
