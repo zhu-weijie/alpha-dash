@@ -1,9 +1,11 @@
 // src/pages/PortfolioPage.tsx
 import React, { useEffect, useState } from 'react';
-import { getPortfolioSummary } from '../services/apiService';
+import { getPortfolioSummary, addPortfolioHolding } from '../services/apiService';
 import { PortfolioSummary, PortfolioHolding } from '../types/portfolio';
 import { Link as RouterLink } from 'react-router-dom';
-import AddHoldingForm from '../components/Portfolio/AddHoldingForm';
+import HoldingForm from '../components/Portfolio/HoldingForm';
+import { updatePortfolioHolding, deletePortfolioHolding } from '../services/apiService';
+import { PortfolioHoldingUpdatePayload, BackendPortfolioHoldingCreate } from '../types/portfolio';
 
 
 const PortfolioPage: React.FC = () => {
@@ -11,6 +13,9 @@ const PortfolioPage: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+    const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
+    const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
+    const [currentEditingHolding, setCurrentEditingHolding] = useState<PortfolioHolding | null>(null);
 
     const fetchPortfolioData = async () => {
         try {
@@ -42,6 +47,41 @@ const PortfolioPage: React.FC = () => {
         fetchPortfolioData();
     };
 
+    const handleAddHoldingSubmit = async (data: BackendPortfolioHoldingCreate | PortfolioHoldingUpdatePayload) => {
+        await addPortfolioHolding(data as BackendPortfolioHoldingCreate);
+        fetchPortfolioData();
+    };
+
+    const handleEditHoldingSubmit = async (data: BackendPortfolioHoldingCreate | PortfolioHoldingUpdatePayload) => {
+        if (currentEditingHolding) {
+            await updatePortfolioHolding(currentEditingHolding.id, data as PortfolioHoldingUpdatePayload);
+            fetchPortfolioData();
+        }
+    };
+
+    const openAddModal = () => {
+        setFormMode('add');
+        setCurrentEditingHolding(null);
+        setIsFormModalOpen(true);
+    };
+
+    const openEditModal = (holding: PortfolioHolding) => {
+        setFormMode('edit');
+        setCurrentEditingHolding(holding);
+        setIsFormModalOpen(true);
+    };
+
+    const handleDeleteHolding = async (holdingId: number) => {
+        if (window.confirm("Are you sure you want to delete this holding?")) {
+            try {
+                await deletePortfolioHolding(holdingId);
+                fetchPortfolioData();
+            } catch (err: any) {
+                setError(err.response?.data?.detail || err.message || "Failed to delete holding.");
+            }
+        }
+    };
+
     if (loading) return <p>Loading portfolio...</p>;
     if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
     if (!portfolio) return <p>No portfolio data found.</p>;
@@ -63,10 +103,20 @@ const PortfolioPage: React.FC = () => {
             <button onClick={() => setIsAddModalOpen(true)} style={{ marginBottom: '20px' }}>
                 Add New Holding
             </button>
-            <AddHoldingForm 
-                isOpen={isAddModalOpen} 
-                onClose={() => setIsAddModalOpen(false)}
-                onHoldingAdded={handleHoldingAdded}
+            <HoldingForm
+                isOpen={isFormModalOpen}
+                onClose={() => setIsFormModalOpen(false)}
+                onSubmitForm={formMode === 'add' ? handleAddHoldingSubmit : handleEditHoldingSubmit}
+                initialData={
+                    formMode === 'edit' && currentEditingHolding ? 
+                    {
+                        quantity: currentEditingHolding.quantity,
+                        purchase_price: currentEditingHolding.purchase_price,
+                        purchase_date: currentEditingHolding.purchase_date,
+                    } : undefined
+                }
+                mode={formMode}
+                assetSymbolReadOnly={formMode === 'edit' ? currentEditingHolding?.asset_info?.symbol : undefined}
             />
 
             <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
@@ -121,6 +171,10 @@ const PortfolioPage: React.FC = () => {
                                     </td>
                                     <td style={{...tdStyle, color: (holding.gain_loss ?? 0) >= 0 ? 'green' : 'red' }}>
                                         {formatPercent(holding.gain_loss_percent)}
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <button onClick={() => openEditModal(holding)}>Edit</button>
+                                        <button onClick={() => handleDeleteHolding(holding.id)} style={{ marginLeft: '5px', backgroundColor: 'red'}}>Delete</button>
                                     </td>
                                 </tr>
                             );
