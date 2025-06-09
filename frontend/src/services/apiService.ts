@@ -101,14 +101,9 @@ export const updatePortfolioHolding = async (
     holdingData: PortfolioHoldingUpdatePayload
 ): Promise<PortfolioHolding> => {
     try {
-        const payload = { ...holdingData };
-        if (payload.purchase_date) {
-            payload.purchase_date = new Date(payload.purchase_date + "T00:00:00.000Z").toISOString();
-        }
-
         const response = await axios.put<PortfolioHolding>(
             `${API_BASE_URL}/portfolio/holdings/${holdingId}`,
-            payload,
+            holdingData,
             { headers: getAuthHeaders() }
         );
         return response.data;

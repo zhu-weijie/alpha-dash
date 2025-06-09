@@ -24,16 +24,30 @@ const HoldingForm: React.FC<HoldingFormProps> = ({
     const [loading, setLoading] = useState<boolean>(false);
 
     useEffect(() => {
-        if (initialData) {
-            const formattedData = { ...initialData };
+        if (isOpen && initialData) {
+            const formattedData: any = { ...initialData };
             if (initialData.purchase_date) {
-                formattedData.purchase_date = new Date(initialData.purchase_date).toISOString().split('T')[0];
+                try {
+                    formattedData.purchase_date = new Date(initialData.purchase_date).toISOString().split('T')[0];
+                } catch (e) {
+                    console.error("Error formatting initial purchase date for form:", e);
+                    formattedData.purchase_date = new Date().toISOString().split('T')[0];
+                }
             }
-            setFormData(fd => ({...fd, ...formattedData}));
-        } else {
-             setFormData({ quantity: 0, purchase_price: 0, purchase_date: new Date().toISOString().split('T')[0] });
+            setFormData(fd => ({
+                quantity: 0, 
+                purchase_price: 0, 
+                purchase_date: new Date().toISOString().split('T')[0],
+                ...formattedData
+            }));
+        } else if (isOpen && mode === 'add') {
+            setFormData({ 
+                quantity: 0, 
+                purchase_price: 0, 
+                purchase_date: new Date().toISOString().split('T')[0] 
+            });
         }
-    }, [isOpen, initialData]);
+    }, [isOpen, initialData, mode]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
@@ -64,6 +78,17 @@ const HoldingForm: React.FC<HoldingFormProps> = ({
         try {
             let submitData: BackendPortfolioHoldingCreate | PortfolioHoldingUpdatePayload;
 
+            let finalPurchaseDateISO: string;
+            if (formData.purchase_date) {
+                const localDateParts = formData.purchase_date.split('-').map(Number);
+                const utcDate = new Date(Date.UTC(localDateParts[0], localDateParts[1] - 1, localDateParts[2]));
+                finalPurchaseDateISO = utcDate.toISOString();
+            } else {
+                setError("Purchase date is invalid.");
+                setLoading(false);
+                return;
+            }
+
             if (mode === 'add') {
                 const asset: Asset | null = await getAssetBySymbol(currentSymbol);
                 if (!asset) {
@@ -75,13 +100,13 @@ const HoldingForm: React.FC<HoldingFormProps> = ({
                     asset_id: asset.id,
                     quantity: formData.quantity,
                     purchase_price: formData.purchase_price,
-                    purchase_date: new Date(formData.purchase_date + "T00:00:00.000Z").toISOString(),
+                    purchase_date: finalPurchaseDateISO,
                 };
             } else {
                 submitData = {
                     quantity: formData.quantity,
                     purchase_price: formData.purchase_price,
-                    purchase_date: new Date(formData.purchase_date + "T00:00:00.000Z").toISOString(),
+                    purchase_date: finalPurchaseDateISO,
                 };
             }
             await onSubmitForm(submitData);
