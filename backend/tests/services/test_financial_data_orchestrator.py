@@ -174,30 +174,40 @@ def test_get_current_price_yf_succeeds_av_not_called(
     mock_set_shared_cache.assert_called_once_with(cache_key, expected_price)
 
 
+
+@patch("app.services.financial_data_orchestrator.shared_cache.set_shared_cache")
+@patch("app.services.financial_data_orchestrator.shared_cache.get_shared_cache")
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price")
 @patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_current_price")
 def test_get_current_price_yf_fails_av_succeeds(
     mock_fetch_yf_stock_price: MagicMock,
     mock_fetch_av_stock_price: MagicMock,
+    mock_get_shared_cache: MagicMock,
+    mock_set_shared_cache: MagicMock,
     monkeypatch
 ):
     monkeypatch.setattr(settings, "ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST_AV")
     symbol = "GOOG"
     asset_type = "stock"
     expected_av_price = 150.00
+    cache_key = f"price:{symbol.upper()}_{asset_type or 'unknown'}"
 
-    mock_fetch_yf_stock_price.return_value = None # yf fails
-    mock_fetch_av_stock_price.return_value = expected_av_price # AV succeeds
+    mock_get_shared_cache.return_value = None
+    mock_fetch_yf_stock_price.return_value = None
+    mock_fetch_av_stock_price.return_value = expected_av_price
 
+    print(f"\nDEBUG Orchestrator Test: YF Fails, AV Succeeds - Calling get_current_price for {symbol}")
     price = orchestrator.get_current_price(symbol, asset_type)
 
     assert price == expected_av_price
-    mock_fetch_yf_stock_price.assert_called_once_with(symbol, asset_type)
-    mock_fetch_av_stock_price.assert_called_once_with(symbol.upper())
+    
+    mock_get_shared_cache.assert_called_once_with(cache_key)
 
-    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_price"
-    assert cache_key in orchestrator._cache["price_cache"]
-    assert orchestrator._cache["price_cache"][cache_key][1] == expected_av_price
+    mock_fetch_yf_stock_price.assert_called_once_with(symbol, asset_type)
+    
+    mock_fetch_av_stock_price.assert_called_once_with(symbol.upper()) 
+    
+    mock_set_shared_cache.assert_called_once_with(cache_key, expected_av_price)
 
 
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price")
