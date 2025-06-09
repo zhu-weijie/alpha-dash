@@ -7,6 +7,7 @@ import {
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 import { HistoricalPricePoint } from '../../types/marketData';
+import { enUS } from 'date-fns/locale';
 
 ChartJS.register(
     CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, TimeScale
@@ -70,11 +71,30 @@ const AssetChart: React.FC<AssetChartProps> = ({ data, assetSymbol }) => {
                 type: 'time' as const,
                 time: {
                     unit: 'day' as const,
+                    // Corrected format for tooltip
+                    tooltipFormat: 'MMM dd, yyyy' as const, // This one IS correct with 'dd'
+                    // Check if displayFormats might be an issue or if there's another default
+                    // Let's ensure all explicit formats use 'dd' or 'd' correctly.
+                    // The default 'day' format in chart.js adapter might be the culprit if not overridden.
+                    // Try setting a more specific adapter format if the issue persists:
+                    adapters: { // Add this adapters section
+                        date: {
+                            locale: enUS, // Assuming you import 'en-US' locale from date-fns
+                            // Override formats here if needed
+                            // formats: { ... }
+                        }
+                    },
                     displayFormats: {
-                        day: 'MMM D, YYYY'
+                        day: 'MMM dd' as const, // This is for the axis ticks, looks okay.
+                        // Add other units if you use them
+                        // month: 'MMM yyyy',
+                        // year: 'yyyy'
                     }
                 },
-                title: { display: true, text: 'Date' }
+                title: {
+                    display: true,
+                    text: 'Date'
+                }
             },
             y: {
                 type: 'linear' as const, 
