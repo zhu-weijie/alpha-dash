@@ -3,6 +3,7 @@ import yfinance as yf
 from typing import List, Dict, Any, Optional
 from datetime import date
 
+
 def _map_symbol_for_yfinance(symbol: str, asset_type: Optional[str] = None) -> str:
     """ Maps internal symbol to yfinance-compatible ticker. """
     symbol_upper = symbol.upper()
@@ -10,7 +11,11 @@ def _map_symbol_for_yfinance(symbol: str, asset_type: Optional[str] = None) -> s
         known_crypto_bases = ["BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "LTC", "BCH", "DOT", "LINK"]
         if symbol_upper in known_crypto_bases:
             return f"{symbol_upper}-USD"
+        base_symbol = symbol_upper.replace("-USD", "").replace("USD", "")
+        if base_symbol in known_crypto_bases:
+            return f"{base_symbol}-USD"
     return symbol_upper
+
 
 def fetch_yf_current_price(symbol: str, asset_type: Optional[str] = None) -> Optional[float]:
     yf_symbol = _map_symbol_for_yfinance(symbol, asset_type)
@@ -36,6 +41,7 @@ def fetch_yf_current_price(symbol: str, asset_type: Optional[str] = None) -> Opt
     except Exception as e:
         print(f"YF_PROVIDER: Error fetching current price for yf_symbol '{yf_symbol}': {e}")
         return None
+
 
 def fetch_yf_historical_data(
     symbol: str, asset_type: Optional[str] = None, 
