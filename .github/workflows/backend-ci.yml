@@ -21,6 +21,16 @@ jobs:
       run:
         working-directory: ./backend
 
+    env:
+      DATABASE_URL: "postgresql://testuser:testpass@localhost:5432/testdb"
+      SECRET_KEY: "test_secret_key_for_ci_0123456789abcdefghijklmnopqrstuvwxyz"
+      PROJECT_NAME: "AlphaDash Test"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      ALGORITHM: "HS256"
+      ALPHA_VANTAGE_API_KEY: "DUMMY_AV_KEY_FOR_CI"
+      REDIS_HOST: "localhost"
+      REDIS_PORT: "6379"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,15 +48,16 @@ jobs:
       
       - name: Lint with Ruff
         run: |
-          ruff check . --output-format=github 
+          python -m ruff check . --output-format=github 
       
       - name: Format Check with Black
         run: |
-          black --check .
+          python -m black --check .
 
       - name: Run unit tests with Pytest
         run: |
-          pytest 
+          python -m pytest 
+          
       - name: Build Docker image
         run: |
           docker build -t alpha-dash-backend:ci-${{ github.sha }} .
