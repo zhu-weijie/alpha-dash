@@ -14,40 +14,57 @@ interface HoldingFormProps {
     assetSymbolReadOnly?: string;
 }
 
+type FormDataType = {
+    symbol?: string;
+    quantity: number;
+    purchase_price: number;
+    purchase_date: string;
+};
+
 const HoldingForm: React.FC<HoldingFormProps> = ({ 
     isOpen, onClose, onSubmitForm, initialData, mode, assetSymbolReadOnly 
 }) => {
-    const [formData, setFormData] = useState(
-        initialData || { quantity: 0, purchase_price: 0, purchase_date: new Date().toISOString().split('T')[0] }
-    );
+    const [formData, setFormData] = useState<FormDataType>({
+        symbol: '',
+        quantity: 0,
+        purchase_price: 0,
+        purchase_date: new Date().toISOString().split('T')[0],
+    });
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
 
     useEffect(() => {
-        if (isOpen && initialData) {
-            const formattedData: any = { ...initialData };
-            if (initialData.purchase_date) {
-                try {
-                    formattedData.purchase_date = new Date(initialData.purchase_date).toISOString().split('T')[0];
-                } catch (e) {
-                    console.error("Error formatting initial purchase date for form:", e);
-                    formattedData.purchase_date = new Date().toISOString().split('T')[0];
+        if (isOpen) {
+            if (mode === 'edit' && initialData) {
+                const formattedInitialData: Partial<FormDataType> = {};
+                if (initialData.quantity !== undefined) formattedInitialData.quantity = initialData.quantity;
+                if (initialData.purchase_price !== undefined) formattedInitialData.purchase_price = initialData.purchase_price;
+                if (initialData.purchase_date) {
+                    try {
+                        formattedInitialData.purchase_date = new Date(initialData.purchase_date).toISOString().split('T')[0];
+                    } catch (e) {
+                        console.error("Error formatting initial purchase date for form:", e);
+                        formattedInitialData.purchase_date = new Date().toISOString().split('T')[0];
+                    }
                 }
+                
+                setFormData({
+                    symbol: assetSymbolReadOnly || '',
+                    quantity: 0,
+                    purchase_price: 0,
+                    purchase_date: new Date().toISOString().split('T')[0],
+                    ...formattedInitialData
+                });
+            } else if (mode === 'add') {
+                setFormData({ 
+                    symbol: '',
+                    quantity: 0, 
+                    purchase_price: 0, 
+                    purchase_date: new Date().toISOString().split('T')[0] 
+                });
             }
-            setFormData(fd => ({
-                quantity: 0, 
-                purchase_price: 0, 
-                purchase_date: new Date().toISOString().split('T')[0],
-                ...formattedData
-            }));
-        } else if (isOpen && mode === 'add') {
-            setFormData({ 
-                quantity: 0, 
-                purchase_price: 0, 
-                purchase_date: new Date().toISOString().split('T')[0] 
-            });
         }
-    }, [isOpen, initialData, mode]);
+    }, [isOpen, initialData, mode, assetSymbolReadOnly]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
@@ -64,13 +81,15 @@ const HoldingForm: React.FC<HoldingFormProps> = ({
 
         const currentSymbol = mode === 'edit' && assetSymbolReadOnly ? assetSymbolReadOnly : (formData as PortfolioHoldingCreatePayload).symbol;
 
-        if (mode === 'add' && !currentSymbol) {
-            setError("Asset Symbol is required for adding a new holding.");
-            setLoading(false);
-            return;
+        let symbolToLookup: string | undefined;
+        if (mode === 'edit') {
+            symbolToLookup = assetSymbolReadOnly;
+        } else {
+            symbolToLookup = formData.symbol;
         }
-        if (formData.quantity && formData.purchase_price && (formData.quantity <= 0 || formData.purchase_price < 0)) {
-            setError("Quantity must be > 0 and Purchase Price must be >= 0.");
+    
+        if (mode === 'add' && (!symbolToLookup || symbolToLookup.trim() === '')) {
+            setError("Asset Symbol is required for adding a new holding.");
             setLoading(false);
             return;
         }
@@ -90,7 +109,8 @@ const HoldingForm: React.FC<HoldingFormProps> = ({
             }
 
             if (mode === 'add') {
-                const asset: Asset | null = await getAssetBySymbol(currentSymbol);
+                if (!symbolToLookup) { return; }
+                const asset: Asset | null = await getAssetBySymbol(symbolToLookup);
                 if (!asset) {
                     setError(`Asset with symbol "${currentSymbol}" not found.`);
                     setLoading(false);
