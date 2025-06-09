@@ -1,6 +1,6 @@
 // src/services/apiService.ts
 import axios from 'axios';
-import { PortfolioSummary, PortfolioHolding, BackendPortfolioHoldingCreate } from '../types/portfolio';
+import { PortfolioSummary, PortfolioHolding, BackendPortfolioHoldingCreate, PortfolioHoldingUpdatePayload } from '../types/portfolio';
 import { HistoricalPricePoint } from '../types/marketData';
 import { Asset, AssetCreatePayload } from '../types/asset';
 
@@ -24,10 +24,9 @@ export const getPortfolioSummary = async (): Promise<PortfolioSummary> => {
     } catch (error) {
         console.error("Error fetching portfolio summary:", error);
         if (axios.isAxiosError(error) && error.response?.status === 401) {
-            // Handle unauthorized, e.g., redirect to login
-            // window.location.href = '/login';
+            window.location.href = '/login';
         }
-        throw error; // Re-throw to be caught by the component
+        throw error;
     }
 };
 
@@ -38,7 +37,6 @@ export const getAssetHistoricalData = async (
     try {
         const response = await axios.get<HistoricalPricePoint[]>(
             `${API_BASE_URL}/market-data/${symbol}/history?outputsize=${outputsize}`,
-            // { headers: getAuthHeaders() }
         );
         return response.data;
     } catch (error) {
@@ -94,6 +92,36 @@ export const createAsset = async (
         return response.data;
     } catch (error) {
         console.error("Error creating asset:", error);
+        throw error;
+    }
+};
+
+export const updatePortfolioHolding = async (
+    holdingId: number,
+    holdingData: PortfolioHoldingUpdatePayload
+): Promise<PortfolioHolding> => {
+    try {
+        const response = await axios.put<PortfolioHolding>(
+            `${API_BASE_URL}/portfolio/holdings/${holdingId}`,
+            holdingData,
+            { headers: getAuthHeaders() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error(`Error updating portfolio holding ${holdingId}:`, error);
+        throw error;
+    }
+};
+
+export const deletePortfolioHolding = async (holdingId: number): Promise<void | PortfolioHolding> => {
+    try {
+        const response = await axios.delete<PortfolioHolding>(
+            `${API_BASE_URL}/portfolio/holdings/${holdingId}`,
+            { headers: getAuthHeaders() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error(`Error deleting portfolio holding ${holdingId}:`, error);
         throw error;
     }
 };

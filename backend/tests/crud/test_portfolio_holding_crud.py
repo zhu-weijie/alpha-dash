@@ -1,8 +1,8 @@
 # backend/tests/crud/test_portfolio_holding_crud.py
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from app import crud, models, schemas
 
@@ -13,18 +13,16 @@ def mock_db_session():
     db_session = MagicMock(spec=Session)
     mock_query = db_session.query.return_value
     mock_filter = mock_query.filter.return_value
-    mock_options = mock_filter.options.return_value  # For joinedload
-    mock_offset = mock_options.offset.return_value  # For pagination
-    mock_limit = mock_offset.limit.return_value  # For pagination
+    mock_options = mock_filter.options.return_value
+    mock_offset = mock_options.offset.return_value
+    mock_limit = mock_offset.limit.return_value
 
-    # Default return values
-    mock_filter.first.return_value = None  # For get_portfolio_holding by id+user_id
-    mock_options.first.return_value = None  # If options is called before first
-    mock_limit.all.return_value = []  # For get_portfolio_holdings_by_user
+    mock_filter.first.return_value = None
+    mock_options.first.return_value = None
+    mock_limit.all.return_value = []
     return db_session
 
 
-# --- Test for create_portfolio_holding ---
 def test_create_portfolio_holding_success(mock_db_session: Session):
     user_id = 1
     purchase_dt = datetime.now(timezone.utc)
@@ -47,17 +45,14 @@ def test_create_portfolio_holding_success(mock_db_session: Session):
     mock_db_session.commit.assert_called_once()
     mock_db_session.refresh.assert_called_once_with(created_holding)
 
-    # Check the object passed to db.add
     added_object = mock_db_session.add.call_args[0][0]
     assert isinstance(added_object, models.PortfolioHolding)
     assert added_object.user_id == user_id
     assert added_object.asset_id == holding_in.asset_id
 
 
-# --- Tests for get_portfolio_holdings_by_user ---
 def test_get_portfolio_holdings_by_user_empty(mock_db_session: Session):
     user_id = 1
-    # The fixture by default sets .all() to return []
     mock_db_session.query.return_value.filter.return_value.options.return_value.offset.return_value.limit.return_value.all.return_value = (
         []
     )
@@ -66,8 +61,6 @@ def test_get_portfolio_holdings_by_user_empty(mock_db_session: Session):
         db=mock_db_session, user_id=user_id, skip=0, limit=10
     )
     assert holdings == []
-    # Check that filter was called with the correct user_id
-    # The actual filter object is complex to assert directly, but we can check if query().filter() was called.
     mock_db_session.query.return_value.filter.assert_called()
 
 
@@ -111,7 +104,6 @@ def test_get_portfolio_holdings_by_user_with_data(mock_db_session: Session):
     )
 
 
-# --- Tests for get_portfolio_holding (single holding by id and user_id) ---
 def test_get_portfolio_holding_found_and_owned(mock_db_session: Session):
     user_id = 1
     holding_id = 5
@@ -123,7 +115,6 @@ def test_get_portfolio_holding_found_and_owned(mock_db_session: Session):
         purchase_price=50,
         purchase_date=datetime.now(timezone.utc),
     )
-    # Configure what .first() returns for this specific test
     mock_db_session.query.return_value.filter.return_value.options.return_value.first.return_value = (
         mock_holding_obj
     )
@@ -135,15 +126,12 @@ def test_get_portfolio_holding_found_and_owned(mock_db_session: Session):
     assert retrieved_holding is not None
     assert retrieved_holding.id == holding_id
     assert retrieved_holding.user_id == user_id
-    # Check that filter was called (difficult to assert the exact filter condition with MagicMock easily)
-    # For more precise filter checking, you might need more advanced mocking or a helper.
     mock_db_session.query.return_value.filter.assert_called()
 
 
 def test_get_portfolio_holding_not_found(mock_db_session: Session):
     user_id = 1
-    holding_id = 99  # Non-existent
-    # .first() is already configured to return None by default in the fixture
+    holding_id = 99
     mock_db_session.query.return_value.filter.return_value.options.return_value.first.return_value = (
         None
     )
@@ -165,3 +153,117 @@ def test_get_portfolio_holding_found_not_owned(mock_db_session: Session):
         db=mock_db_session, holding_id=holding_id, user_id=user_id_requester
     )
     assert retrieved_holding is None
+
+
+def test_update_portfolio_holding_success(mock_db_session: Session):
+    initial_purchase_date = datetime.now(timezone.utc) - timedelta(days=10)
+    db_holding_to_update = models.PortfolioHolding(
+        id=1,
+        user_id=1,
+        asset_id=1,
+        quantity=10.0,
+        purchase_price=100.0,
+        purchase_date=initial_purchase_date,
+    )
+
+    new_quantity = 12.0
+    new_price = 110.0
+    new_purchase_date_obj = datetime.now(timezone.utc)
+
+    holding_update_schema = schemas.PortfolioHoldingUpdate(
+        quantity=new_quantity,
+        purchase_price=new_price,
+        purchase_date=new_purchase_date_obj,
+    )
+
+    updated_holding = crud.update_portfolio_holding(
+        db=mock_db_session,
+        db_holding=db_holding_to_update,
+        holding_in=holding_update_schema,
+    )
+
+    assert updated_holding is not None
+    assert updated_holding.id == 1
+    assert updated_holding.quantity == new_quantity
+    assert updated_holding.purchase_price == new_price
+    assert updated_holding.purchase_date == new_purchase_date_obj
+
+    assert db_holding_to_update.quantity == new_quantity
+
+    mock_db_session.add.assert_called_once_with(db_holding_to_update)
+    mock_db_session.commit.assert_called_once()
+    mock_db_session.refresh.assert_called_once_with(db_holding_to_update)
+
+
+def test_update_portfolio_holding_partial_update(mock_db_session: Session):
+    db_holding_to_update = models.PortfolioHolding(
+        id=2,
+        user_id=1,
+        asset_id=2,
+        quantity=5.0,
+        purchase_price=200.0,
+        purchase_date=datetime.now(timezone.utc),
+    )
+    original_price = db_holding_to_update.purchase_price
+
+    holding_update_schema = schemas.PortfolioHoldingUpdate(quantity=7.5)
+
+    updated_holding = crud.update_portfolio_holding(
+        db=mock_db_session,
+        db_holding=db_holding_to_update,
+        holding_in=holding_update_schema,
+    )
+
+    assert updated_holding.quantity == 7.5
+    assert updated_holding.purchase_price == original_price
+    mock_db_session.add.assert_called_once()
+
+
+def test_remove_portfolio_holding_success(mock_db_session: Session):
+    user_id = 1
+    holding_id_to_delete = 3
+
+    mock_holding_to_delete = models.PortfolioHolding(
+        id=holding_id_to_delete,
+        user_id=user_id,
+        asset_id=1,
+        quantity=1,
+        purchase_price=1,
+        purchase_date=datetime.now(timezone.utc),
+    )
+
+    with patch(
+        "app.crud.crud_portfolio_holding.get_portfolio_holding",
+        return_value=mock_holding_to_delete,
+    ) as mock_get_holding:
+        deleted_holding = crud.remove_portfolio_holding(
+            db=mock_db_session, holding_id=holding_id_to_delete, user_id=user_id
+        )
+
+        assert deleted_holding is not None
+        assert deleted_holding.id == holding_id_to_delete
+
+        mock_get_holding.assert_called_once_with(
+            db=mock_db_session, holding_id=holding_id_to_delete, user_id=user_id
+        )
+        mock_db_session.delete.assert_called_once_with(mock_holding_to_delete)
+        mock_db_session.commit.assert_called_once()
+
+
+def test_remove_portfolio_holding_not_found_or_not_owned(mock_db_session: Session):
+    user_id = 1
+    holding_id_to_delete = 99
+
+    with patch(
+        "app.crud.crud_portfolio_holding.get_portfolio_holding", return_value=None
+    ) as mock_get_holding:
+        deleted_holding = crud.remove_portfolio_holding(
+            db=mock_db_session, holding_id=holding_id_to_delete, user_id=user_id
+        )
+
+        assert deleted_holding is None
+        mock_get_holding.assert_called_once_with(
+            db=mock_db_session, holding_id=holding_id_to_delete, user_id=user_id
+        )
+        mock_db_session.delete.assert_not_called()
+        mock_db_session.commit.assert_not_called()

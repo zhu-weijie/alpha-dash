@@ -12,6 +12,8 @@ from .crud_portfolio_holding import (
     create_portfolio_holding,
     get_portfolio_holdings_by_user,
     get_portfolio_holding,
+    update_portfolio_holding,
+    remove_portfolio_holding,
 )
 
 __all__ = [
@@ -26,4 +28,6 @@ __all__ = [
     "create_portfolio_holding",
     "get_portfolio_holdings_by_user",
     "get_portfolio_holding",
+    "update_portfolio_holding",
+    "remove_portfolio_holding",
 ]
