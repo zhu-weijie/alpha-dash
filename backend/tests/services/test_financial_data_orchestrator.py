@@ -42,11 +42,15 @@ def test_get_current_price_stock_cache_miss_then_hit(
     mock_fetch_av_stock_price.assert_not_called()
 
 
+@patch("app.services.financial_data_orchestrator.shared_cache.set_shared_cache")
+@patch("app.services.financial_data_orchestrator.shared_cache.get_shared_cache")
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_crypto_current_price")
 @patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_current_price")
 def test_get_current_price_crypto_cache_miss_then_hit(
     mock_fetch_yf_crypto_price: MagicMock,
     mock_fetch_av_crypto_price: MagicMock,
+    mock_get_shared_cache: MagicMock,
+    mock_set_shared_cache: MagicMock,
     monkeypatch
 ):
     monkeypatch.setattr(settings, "ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST_AV")
@@ -54,28 +58,36 @@ def test_get_current_price_crypto_cache_miss_then_hit(
     symbol = "ETH"
     asset_type = "crypto"
     expected_yf_price = 2500.75
+    cache_key = f"price:{symbol.upper()}_{asset_type or 'unknown'}"
 
+    mock_get_shared_cache.return_value = None 
     mock_fetch_yf_crypto_price.return_value = expected_yf_price
     mock_fetch_av_crypto_price.return_value = 9999.99
 
+    print(f"\nDEBUG Orchestrator Test: Calling get_current_price for {symbol} (1st time, expect shared_cache miss)")
     price1 = orchestrator.get_current_price(symbol, asset_type)
     
-    assert price1 == expected_yf_price, "Price should come from yfinance provider"
-    
+    assert price1 == expected_yf_price
+    mock_get_shared_cache.assert_called_once_with(cache_key)
     mock_fetch_yf_crypto_price.assert_called_once_with(symbol, asset_type)
-    
     mock_fetch_av_crypto_price.assert_not_called()
-    
-    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_price"
-    assert cache_key in orchestrator._cache["price_cache"]
-    assert orchestrator._cache["price_cache"][cache_key][1] == expected_yf_price
+    mock_set_shared_cache.assert_called_once_with(cache_key, expected_yf_price)
 
+    mock_get_shared_cache.reset_mock()
+    mock_set_shared_cache.reset_mock()
+    mock_fetch_yf_crypto_price.reset_mock()
+    mock_fetch_av_crypto_price.reset_mock()
+
+    mock_get_shared_cache.return_value = expected_yf_price 
+
+    print(f"DEBUG Orchestrator Test: Calling get_current_price for {symbol} (2nd time, expect shared_cache hit)")
     price2 = orchestrator.get_current_price(symbol, asset_type)
 
-    assert price2 == expected_yf_price, "Price should come from cache"
-    
-    mock_fetch_yf_crypto_price.assert_called_once() 
+    assert price2 == expected_yf_price
+    mock_get_shared_cache.assert_called_once_with(cache_key)
+    mock_fetch_yf_crypto_price.assert_not_called()
     mock_fetch_av_crypto_price.assert_not_called()
+    mock_set_shared_cache.assert_not_called()
 
 
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price")
