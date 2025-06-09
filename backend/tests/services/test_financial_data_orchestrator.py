@@ -381,11 +381,15 @@ def test_get_historical_data_crypto_cache_miss_then_hit(
     mock_set_shared_cache.assert_not_called()
 
 
+@patch("app.services.financial_data_orchestrator.shared_cache.set_shared_cache")
+@patch("app.services.financial_data_orchestrator.shared_cache.get_shared_cache")
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_historical_data")
 @patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_historical_data")
 def test_get_historical_data_provider_returns_none(
     mock_fetch_yf_stock_hist: MagicMock,
     mock_fetch_av_stock_hist: MagicMock,
+    mock_get_shared_cache: MagicMock,
+    mock_set_shared_cache: MagicMock,
     monkeypatch
 ):
     monkeypatch.setattr(settings, "ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST_AV")
@@ -394,20 +398,24 @@ def test_get_historical_data_provider_returns_none(
     asset_type = "stock"
     outputsize = "compact"
     yf_period_expected = "3mo"
+    cache_key = f"history:{symbol.upper()}_{asset_type or 'unknown'}_{yf_period_expected}"
 
+    mock_get_shared_cache.return_value = None
     mock_fetch_yf_stock_hist.return_value = None
     mock_fetch_av_stock_hist.return_value = None
 
+    print(f"\nDEBUG Orchestrator Test: Hist Provider None - Calling get_historical_data for {symbol}")
     history = orchestrator.get_historical_data(symbol, asset_type, outputsize)
     
     assert history is None, "History should be None if all providers fail"
+    
+    mock_get_shared_cache.assert_called_once_with(cache_key)
     
     mock_fetch_yf_stock_hist.assert_called_once_with(symbol, asset_type, period=yf_period_expected)
     
     mock_fetch_av_stock_hist.assert_called_once_with(symbol.upper(), outputsize=outputsize) 
     
-    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_{yf_period_expected}_hist"
-    assert cache_key not in orchestrator._cache["history_cache"], "None should not be cached for history"
+    mock_set_shared_cache.assert_not_called()
 
 
 @patch("app.services.financial_data_orchestrator.shared_cache.set_shared_cache")
