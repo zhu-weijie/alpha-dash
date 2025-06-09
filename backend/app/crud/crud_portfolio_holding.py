@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Union, Dict, Any
 from app import models, schemas
-from app.crud.crud_asset import get_asset
+from app.crud import get_asset
 
 
 def create_portfolio_holding(
