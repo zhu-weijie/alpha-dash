@@ -25,7 +25,6 @@ def add_asset_to_portfolio(
     """
     Add an asset holding to the current user's portfolio.
     """
-    # Validate that the asset_id refers to an existing asset
     asset = crud.get_asset(db, asset_id=holding_in.asset_id)
     if not asset:
         raise HTTPException(
@@ -35,20 +34,17 @@ def add_asset_to_portfolio(
     holding_model = crud.create_portfolio_holding(
         db=db, holding_in=holding_in, user_id=current_user.id
     )
-    # Manually construct the response schema with asset_info
-    # This ensures asset_info is populated for the immediate response after creation
     asset_schema = schemas.Asset.model_validate(holding_model.asset_info)
     holding_response = schemas.PortfolioHolding.model_validate(holding_model)
     holding_response.asset_info = asset_schema
 
-    # Fetch current price for the newly added holding for immediate display if desired
     current_price = get_current_price(holding_model.asset_info.symbol)
     if current_price is not None:
         holding_response.current_price = current_price
         holding_response.current_value = holding_model.quantity * current_price
         purchase_value = holding_model.quantity * holding_model.purchase_price
         holding_response.gain_loss = holding_response.current_value - purchase_value
-        if purchase_value > 0:  # Avoid division by zero
+        if purchase_value > 0:
             holding_response.gain_loss_percent = (
                 holding_response.gain_loss / purchase_value
             ) * 100
@@ -77,16 +73,13 @@ def view_user_portfolio_summary(
     total_current_value = 0.0
 
     for db_holding in db_holdings:
-        # Convert DB model to Pydantic schema
         holding_schema = schemas.PortfolioHolding.model_validate(db_holding)
 
-        # Ensure asset_info is populated (it should be due to joinedload)
         if db_holding.asset_info:
             holding_schema.asset_info = schemas.Asset.model_validate(
                 db_holding.asset_info
             )
 
-            # Fetch current price for the asset
             current_price = get_current_price(db_holding.asset_info.symbol)
 
             purchase_value_of_holding = db_holding.quantity * db_holding.purchase_price
@@ -109,10 +102,6 @@ def view_user_portfolio_summary(
                     )  # Handle 0 purchase price
                 total_current_value += current_value_of_holding
             else:
-                # If price fetch fails, current_value and gain_loss remain None (as per schema default)
-                # You might decide to add the purchase value to total_current_value
-                # or handle it differently, e.g., exclude from total_current_value calculation.
-                # For simplicity, if current price is unknown, it doesn't contribute to total_current_value.
                 pass
 
         processed_holdings.append(holding_schema)
@@ -121,10 +110,8 @@ def view_user_portfolio_summary(
     total_gain_loss_percent = 0.0
     if total_purchase_value > 0:
         total_gain_loss_percent = (total_gain_loss / total_purchase_value) * 100
-    elif total_current_value > 0:  # Purchased for 0, but has value now (e.g. airdrop)
-        total_gain_loss_percent = float(
-            "inf"
-        )  # Or handle as 100% gain if current_value > 0
+    elif total_current_value > 0:
+        total_gain_loss_percent = float("inf")
 
     return schemas.PortfolioSummary(
         total_purchase_value=round(total_purchase_value, 2),
@@ -170,4 +157,75 @@ def view_single_portfolio_holding(
                 holding_response.gain_loss_percent = (
                     holding_response.gain_loss / purchase_value
                 ) * 100
+    return holding_response
+
+
+@router.put("/holdings/{holding_id}", response_model=schemas.PortfolioHolding)
+def update_user_portfolio_holding(
+    *,
+    db: Session = Depends(get_db),
+    holding_id: int,
+    holding_in: schemas.PortfolioHoldingUpdate,
+    current_user: models.User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Update a specific portfolio holding for the current user.
+    """
+    db_holding = crud.get_portfolio_holding(
+        db=db, holding_id=holding_id, user_id=current_user.id
+    )
+    if not db_holding:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Portfolio holding not found or not owned by user.",
+        )
+
+    updated_holding_model = crud.update_portfolio_holding(
+        db=db, db_holding=db_holding, holding_in=holding_in
+    )
+
+    asset_schema = schemas.Asset.model_validate(updated_holding_model.asset_info)
+    holding_response = schemas.PortfolioHolding.model_validate(updated_holding_model)
+    holding_response.asset_info = asset_schema
+
+    current_price = get_current_price(
+        symbol=updated_holding_model.asset_info.symbol,
+        asset_type=updated_holding_model.asset_info.asset_type.value,
+    )
+    if current_price is not None:
+        holding_response.current_price = current_price
+        holding_response.current_value = updated_holding_model.quantity * current_price
+        purchase_value = (
+            updated_holding_model.quantity * updated_holding_model.purchase_price
+        )
+        holding_response.gain_loss = holding_response.current_value - purchase_value
+        if purchase_value > 0:
+            holding_response.gain_loss_percent = (
+                holding_response.gain_loss / purchase_value
+            ) * 100
+
+    return holding_response
+
+
+@router.delete("/holdings/{holding_id}", status_code=status.HTTP_200_OK)
+def delete_user_portfolio_holding(
+    *,
+    db: Session = Depends(get_db),
+    holding_id: int,
+    current_user: models.User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Delete a specific portfolio holding for the current user.
+    """
+    deleted_holding = crud.remove_portfolio_holding(
+        db=db, holding_id=holding_id, user_id=current_user.id
+    )
+    if not deleted_holding:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Portfolio holding not found or not owned by user.",
+        )
+    asset_schema = schemas.Asset.model_validate(deleted_holding.asset_info)
+    holding_response = schemas.PortfolioHolding.model_validate(deleted_holding)
+    holding_response.asset_info = asset_schema
     return holding_response
