@@ -50,4 +50,3 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t alpha-dash-backend:ci-${{ github.sha }} .
-        working-directory: ./backend
