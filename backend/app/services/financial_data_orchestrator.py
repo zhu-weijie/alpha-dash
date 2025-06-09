@@ -7,6 +7,13 @@ from .data_providers import alpha_vantage_provider as av_provider
 from app.cache import shared_cache
 
 
+_cache = {
+    "price_cache": {},
+    "history_cache": {}
+}
+CACHE_DURATION_SECONDS = 15 * 60 
+
+
 def get_current_price(symbol: str, asset_type: Optional[str] = None) -> Optional[float]:
     symbol_upper = symbol.upper()
     cache_key = f"price:{symbol_upper}_{asset_type or 'unknown'}"
