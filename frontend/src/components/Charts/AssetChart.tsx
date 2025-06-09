@@ -2,30 +2,14 @@
 import React from 'react';
 import { Line } from 'react-chartjs-2';
 import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    TimeScale,
-    TimeSeriesScale
+    Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
+    Title, Tooltip, Legend, TimeScale
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 import { HistoricalPricePoint } from '../../types/marketData';
 
 ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    TimeScale // Register TimeScale
-    // TimeSeriesScale // Register if using time series scale explicitly
+    CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, TimeScale
 );
 
 interface AssetChartProps {
@@ -39,14 +23,33 @@ const AssetChart: React.FC<AssetChartProps> = ({ data, assetSymbol }) => {
     }
 
     const chartData = {
-        labels: data.map(point => point.date), // Dates for x-axis
+        labels: data.map(point => point.date),
         datasets: [
             {
                 label: `${assetSymbol || 'Asset'} Closing Price`,
                 data: data.map(point => point.close),
                 borderColor: 'rgb(75, 192, 192)',
                 tension: 0.1,
+                yAxisID: 'y',
             },
+            ...(data.some(p => p.sma20 != null) ? [{
+                label: 'SMA 20',
+                data: data.map(point => point.sma20),
+                borderColor: 'rgb(255, 159, 64)',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.1,
+                yAxisID: 'y',
+            }] : []),
+            ...(data.some(p => p.sma50 != null) ? [{
+                label: 'SMA 50',
+                data: data.map(point => point.sma50),
+                borderColor: 'rgb(255, 99, 132)',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.1,
+                yAxisID: 'y',
+            }] : []),
         ],
     };
 
@@ -59,29 +62,25 @@ const AssetChart: React.FC<AssetChartProps> = ({ data, assetSymbol }) => {
             },
             title: {
                 display: true,
-                text: `${assetSymbol || 'Asset'} Historical Price`,
-            },
+                text: `${assetSymbol || 'Asset'} Price Chart`
+            }
         },
         scales: {
             x: {
-                type: 'time' as const, // Use time scale
+                type: 'time' as const,
                 time: {
-                    unit: 'day' as const, // Display unit
-                    tooltipFormat: 'MMM dd, yyyy' as const, // e.g., Oct 28, 2023
+                    unit: 'day' as const,
                     displayFormats: {
-                        day: 'MMM dd' as const // How dates are displayed on the axis
+                        day: 'MMM D, YYYY'
                     }
                 },
-                title: {
-                    display: true,
-                    text: 'Date'
-                }
+                title: { display: true, text: 'Date' }
             },
             y: {
-                title: {
-                    display: true,
-                    text: 'Price (USD)' // Assuming USD
-                }
+                type: 'linear' as const, 
+                display: true,
+                position: 'left' as const,
+                title: { display: true, text: 'Price (USD)' }
             }
         }
     };
