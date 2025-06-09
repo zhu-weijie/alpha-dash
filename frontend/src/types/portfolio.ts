@@ -38,3 +38,9 @@ export interface BackendPortfolioHoldingCreate {
     purchase_price: number;
     purchase_date: string;
 }
+
+export interface PortfolioHoldingUpdatePayload {
+    quantity?: number;
+    purchase_price?: number;
+    purchase_date?: string;
+}
