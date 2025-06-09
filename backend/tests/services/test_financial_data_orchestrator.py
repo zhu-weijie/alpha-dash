@@ -210,47 +210,65 @@ def test_get_current_price_yf_fails_av_succeeds(
     mock_set_shared_cache.assert_called_once_with(cache_key, expected_av_price)
 
 
+@patch("app.services.financial_data_orchestrator.shared_cache.set_shared_cache")
+@patch("app.services.financial_data_orchestrator.shared_cache.get_shared_cache")
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price")
 @patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_current_price")
 def test_get_current_price_cache_expiration(
     mock_fetch_yf_stock_price: MagicMock,
     mock_fetch_av_stock_price: MagicMock,
+    mock_get_shared_cache: MagicMock,
+    mock_set_shared_cache: MagicMock,
     monkeypatch
 ):
     monkeypatch.setattr(settings, "ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST_AV")
     
     original_cache_duration = orchestrator.CACHE_DURATION_SECONDS
+    monkeypatch.setattr("app.cache.shared_cache.CACHE_DURATION_SECONDS", 0.05)
     monkeypatch.setattr(orchestrator, "CACHE_DURATION_SECONDS", 0.05)
+
 
     symbol = "EXP"
     asset_type = "stock"
     mock_price_call_1 = 100.00
-    mock_price_call_2 = 101.00
+    mock_price_call_2 = 101.00 # Price after cache expiry
+    cache_key = f"price:{symbol.upper()}_{asset_type or 'unknown'}"
 
-    mock_fetch_yf_stock_price.side_effect = [mock_price_call_1, mock_price_call_2]
-    
-    mock_fetch_av_stock_price.return_value = 999.99 
+    mock_get_shared_cache.return_value = None
+    mock_fetch_yf_stock_price.return_value = mock_price_call_1
+    mock_fetch_av_stock_price.return_value = 999.99
 
+    print(f"\nDEBUG Orchestrator Test: Cache Expiration - Calling get_current_price for {symbol} (1st time)")
     price1 = orchestrator.get_current_price(symbol, asset_type)
+    
     assert price1 == mock_price_call_1
+    mock_get_shared_cache.assert_called_once_with(cache_key)
     mock_fetch_yf_stock_price.assert_called_once_with(symbol, asset_type)
     mock_fetch_av_stock_price.assert_not_called()
+    mock_set_shared_cache.assert_called_once_with(cache_key, mock_price_call_1)
 
-    cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_price"
-    assert cache_key in orchestrator._cache["price_cache"]
-    assert orchestrator._cache["price_cache"][cache_key][1] == mock_price_call_1
 
-    time.sleep(0.1)
+    mock_get_shared_cache.reset_mock()
+    mock_set_shared_cache.reset_mock()
+    mock_fetch_yf_stock_price.reset_mock()
 
+    mock_get_shared_cache.return_value = None
+    mock_fetch_yf_stock_price.return_value = mock_price_call_2
+
+    time.sleep(0.1) 
+
+    print(f"DEBUG Orchestrator Test: Cache Expiration - Calling get_current_price for {symbol} (2nd time after expiry)")
     price2 = orchestrator.get_current_price(symbol, asset_type)
+    
     assert price2 == mock_price_call_2
-    assert mock_fetch_yf_stock_price.call_count == 2
+    
+    mock_get_shared_cache.assert_called_once_with(cache_key)
+    mock_fetch_yf_stock_price.assert_called_once_with(symbol, asset_type)
     mock_fetch_av_stock_price.assert_not_called()
-
-    assert cache_key in orchestrator._cache["price_cache"]
-    assert orchestrator._cache["price_cache"][cache_key][1] == mock_price_call_2
+    mock_set_shared_cache.assert_called_once_with(cache_key, mock_price_call_2)
     
     monkeypatch.setattr(orchestrator, "CACHE_DURATION_SECONDS", original_cache_duration)
+    monkeypatch.setattr("app.cache.shared_cache.CACHE_DURATION_SECONDS", original_cache_duration)
 
 
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_historical_data")
