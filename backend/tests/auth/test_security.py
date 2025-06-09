@@ -1,5 +1,4 @@
 # backend/tests/auth/test_security.py
-import pytest
 from app.auth.security import get_password_hash, verify_password
 from app.auth.security import create_access_token, decode_access_token
 from datetime import datetime, timedelta, timezone

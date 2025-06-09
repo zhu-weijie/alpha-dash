@@ -5,28 +5,17 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+from app.core.config import settings
+from app.db.base import Base
+
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-from app.core.config import settings # For DATABASE_URL
-from app.db.base import Base  # Import your Base from your app structure
-# Set the sqlalchemy.url in the Alembic config object programmatically
-# This makes alembic.ini's sqlalchemy.url less critical if it's also in your env/settings
 if settings.DATABASE_URL:
     config.set_main_option('sqlalchemy.url', settings.DATABASE_URL.replace('%', '%%'))
 target_metadata = Base.metadata
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def run_migrations_offline() -> None:

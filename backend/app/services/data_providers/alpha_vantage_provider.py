@@ -1,7 +1,7 @@
 # app/services/data_providers/alpha_vantage_provider.py
 import requests
 from typing import List, Dict, Any, Optional
-from datetime import datetime, date
+from datetime import datetime
 
 from app.core.config import settings # For API Key
 

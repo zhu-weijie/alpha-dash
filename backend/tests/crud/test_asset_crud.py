@@ -1,11 +1,10 @@
 # backend/tests/crud/test_asset_crud.py
 import pytest
-from unittest.mock import MagicMock, call # Import call for checking multiple calls
+from unittest.mock import MagicMock
 from sqlalchemy.orm import Session
-from typing import List
 
 from app import crud, models, schemas
-from app.models.asset import AssetType # For creating test data
+from app.models.asset import AssetType
 
 @pytest.fixture
 def mock_db_session():

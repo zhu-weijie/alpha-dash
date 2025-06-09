@@ -5,12 +5,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app import crud, models, schemas
-from app.models.asset import AssetType # For creating test asset data
 
-# Re-use or define a similar mock_db_session fixture
-# If this fixture is identical to the one in test_asset_crud.py and test_user_crud.py,
-# it could be moved to tests/conftest.py to be shared.
-# Here we explicitly define the mock_db_session fixture for this test file.
 @pytest.fixture
 def mock_db_session():
     """Reusable mock SQLAlchemy Session."""
@@ -128,10 +123,8 @@ def test_get_portfolio_holding_not_found(mock_db_session: Session):
     assert retrieved_holding is None
 
 def test_get_portfolio_holding_found_not_owned(mock_db_session: Session):
-    user_id_owner = 1
-    user_id_requester = 2 # Different user
+    user_id_requester = 2
     holding_id = 7
-    # Mock implies that the query for user_id_requester would find nothing
     mock_db_session.query.return_value.filter.return_value.options.return_value.first.return_value = None
 
     retrieved_holding = crud.get_portfolio_holding(

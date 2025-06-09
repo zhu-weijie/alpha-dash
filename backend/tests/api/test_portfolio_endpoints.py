@@ -5,8 +5,8 @@ from unittest.mock import patch, MagicMock
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
-from main import app # Corrected import for your FastAPI app instance
-from app import models, schemas, crud # Import crud here for clarity
+from main import app
+from app import models
 from app.core.config import settings
 from app.models.asset import AssetType
 from app.auth.dependencies import get_current_active_user, get_db # Import the actual dependencies

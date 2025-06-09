@@ -6,7 +6,7 @@ from typing import List, Any
 from app import crud, models, schemas
 from app.db.session import get_db
 from app.auth.dependencies import get_current_active_user
-from app.services import get_current_price, get_historical_data
+from app.services import get_current_price
 
 router = APIRouter()
 

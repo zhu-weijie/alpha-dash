@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch # For mocking
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
-from app.auth.security import get_password_hash # We might mock this too for pure CRUD test
 
 @pytest.fixture
 def mock_db_session():

@@ -2,8 +2,7 @@
 import pytest
 import time
 from unittest.mock import patch, MagicMock
-from typing import List, Dict, Any, Optional
-from datetime import date, datetime, timezone
+from datetime import date
 from app.core.config import settings
 
 from app.services import financial_data_orchestrator as orchestrator 
