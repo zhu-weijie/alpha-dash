@@ -1,5 +1,6 @@
 # app/services/data_providers/yahoo_finance_provider.py
 import yfinance as yf
+import pandas as pd
 from typing import List, Dict, Any, Optional
 from datetime import date
 
@@ -93,6 +94,16 @@ def fetch_yf_historical_data(
             )
             return None
 
+        if len(hist_df) >= 20:
+            hist_df["sma20"] = hist_df["Close"].rolling(window=20).mean()
+        else:
+            hist_df["sma20"] = None
+
+        if len(hist_df) >= 50:
+            hist_df["sma50"] = hist_df["Close"].rolling(window=50).mean()
+        else:
+            hist_df["sma50"] = None
+
         processed_data = []
         for date_index, row in hist_df.iterrows():
             dt_date = (
@@ -101,18 +112,15 @@ def fetch_yf_historical_data(
                 else date.fromisoformat(str(date_index).split(" ")[0])
             )
 
+            sma20_val = float(row["sma20"]) if pd.notna(row.get("sma20")) else None
+            sma50_val = float(row["sma50"]) if pd.notna(row.get("sma50")) else None
+
             if any(
-                pd_val != pd_val
-                for pd_val in [
-                    row.get("Open"),
-                    row.get("High"),
-                    row.get("Low"),
-                    row.get("Close"),
-                    row.get("Volume"),
-                ]
+                pd.isna(row.get(col))
+                for col in ["Open", "High", "Low", "Close", "Volume"]
             ):
                 print(
-                    f"YF_PROVIDER: Skipping data point for {yf_symbol} on {dt_date} due to NaN values."
+                    f"YF_PROVIDER: Skipping data point for {yf_symbol} on {dt_date} due to NaN in OHLCV."
                 )
                 continue
 
@@ -124,11 +132,13 @@ def fetch_yf_historical_data(
                     "low": float(row["Low"]),
                     "close": float(row["Close"]),
                     "volume": int(row["Volume"]),
+                    "sma20": sma20_val,
+                    "sma50": sma50_val,
                 }
             )
         return processed_data if processed_data else None
     except Exception as e:
         print(
-            f"YF_PROVIDER: Error fetching historical data for yf_symbol '{yf_symbol}': {e}"
+            f"YF_PROVIDER: Error fetching/processing historical data for yf_symbol '{yf_symbol}': {e}"
         )
         return None
