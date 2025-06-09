@@ -15,31 +15,55 @@ def clear_orchestrator_cache():
     orchestrator._cache["history_cache"].clear()
 
 
-@patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_current_price")
+@patch("app.services.financial_data_orchestrator.shared_cache.set_shared_cache")
+@patch("app.services.financial_data_orchestrator.shared_cache.get_shared_cache")
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price") 
+@patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_current_price")
 def test_get_current_price_stock_cache_miss_then_hit(
-    mock_fetch_av_stock_price,
-    mock_fetch_yf_current_price,
+    mock_fetch_yf_stock_price: MagicMock,
+    mock_fetch_av_stock_price: MagicMock,
+    mock_get_shared_cache: MagicMock,
+    mock_set_shared_cache: MagicMock,
     monkeypatch
 ):
-    monkeypatch.setattr("app.core.config.settings.ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST")
+    monkeypatch.setattr(settings, "ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST_AV")
     
     symbol = "AAPL"
     asset_type = "stock"
-    mock_yf_price = 150.75 # This is the price yfinance should return
-    
-    mock_fetch_yf_current_price.return_value = mock_yf_price
-    mock_fetch_av_stock_price.return_value = 999.99 # Different value for AV to ensure it's not called
+    expected_yf_price = 150.75 
 
+    cache_key = f"price:{symbol.upper()}_{asset_type or 'unknown'}" 
+
+    mock_get_shared_cache.return_value = None
+    mock_fetch_yf_stock_price.return_value = expected_yf_price
+    mock_fetch_av_stock_price.return_value = 999.99 
+
+    print(f"\nDEBUG Orchestrator Test: Stock Price - Calling get_current_price for {symbol} (1st time)")
     price1 = orchestrator.get_current_price(symbol, asset_type)
-    assert price1 == mock_yf_price
-    mock_fetch_yf_current_price.assert_called_once_with(symbol, asset_type)
-    mock_fetch_av_stock_price.assert_not_called() # AV should not be called if yf succeeds
-
-    price2 = orchestrator.get_current_price(symbol, asset_type)
-    assert price2 == mock_yf_price
-    mock_fetch_yf_current_price.assert_called_once() # Call count remains 1
+    
+    assert price1 == expected_yf_price, "Price should come from yfinance provider"
+    
+    mock_get_shared_cache.assert_called_once_with(cache_key)
+    mock_fetch_yf_stock_price.assert_called_once_with(symbol, asset_type)
     mock_fetch_av_stock_price.assert_not_called()
+    mock_set_shared_cache.assert_called_once_with(cache_key, expected_yf_price)
+
+    mock_get_shared_cache.reset_mock()
+    mock_set_shared_cache.reset_mock()
+    mock_fetch_yf_stock_price.reset_mock()
+    mock_fetch_av_stock_price.reset_mock()
+
+    mock_get_shared_cache.return_value = expected_yf_price 
+
+    print(f"DEBUG Orchestrator Test: Stock Price - Calling get_current_price for {symbol} (2nd time)")
+    price2 = orchestrator.get_current_price(symbol, asset_type)
+
+    assert price2 == expected_yf_price, "Price should come from shared_cache"
+    
+    mock_get_shared_cache.assert_called_once_with(cache_key)
+    mock_fetch_yf_stock_price.assert_not_called()
+    mock_fetch_av_stock_price.assert_not_called()
+    mock_set_shared_cache.assert_not_called()
 
 
 @patch("app.services.financial_data_orchestrator.shared_cache.set_shared_cache")
