@@ -140,25 +140,38 @@ def test_get_current_price_provider_returns_none(
     cache_key = f"{symbol.upper()}_{asset_type or 'unknown'}_price"
     assert cache_key not in orchestrator._cache["price_cache"], "None should not be cached for price"
 
+
+@patch("app.services.financial_data_orchestrator.shared_cache.set_shared_cache")
+@patch("app.services.financial_data_orchestrator.shared_cache.get_shared_cache")
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price")
 @patch("app.services.data_providers.yahoo_finance_provider.fetch_yf_current_price")
 def test_get_current_price_yf_succeeds_av_not_called(
     mock_fetch_yf_stock_price: MagicMock,
     mock_fetch_av_stock_price: MagicMock,
+    mock_get_shared_cache: MagicMock,
+    mock_set_shared_cache: MagicMock,
     monkeypatch
 ):
     monkeypatch.setattr(settings, "ALPHA_VANTAGE_API_KEY", "DUMMY_KEY_FOR_TEST_AV")
     symbol = "MSFT"
     asset_type = "stock"
     expected_price = 400.00
+    cache_key = f"price:{symbol.upper()}_{asset_type or 'unknown'}"
 
+    mock_get_shared_cache.return_value = None
     mock_fetch_yf_stock_price.return_value = expected_price
 
+    print(f"\nDEBUG Orchestrator Test: YF Succeeds - Calling get_current_price for {symbol}")
     price = orchestrator.get_current_price(symbol, asset_type)
-
     assert price == expected_price
+    
+    mock_get_shared_cache.assert_called_once_with(cache_key)
+    
     mock_fetch_yf_stock_price.assert_called_once_with(symbol, asset_type)
+    
     mock_fetch_av_stock_price.assert_not_called()
+    
+    mock_set_shared_cache.assert_called_once_with(cache_key, expected_price)
 
 
 @patch("app.services.data_providers.alpha_vantage_provider.fetch_av_stock_current_price")
