@@ -7,12 +7,9 @@ from app.auth.dependencies import get_current_active_user
 
 router = APIRouter()
 
+
 @router.post("/", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
-def create_new_user(
-    *,
-    db: Session = Depends(get_db),
-    user_in: schemas.UserCreate
-):
+def create_new_user(*, db: Session = Depends(get_db), user_in: schemas.UserCreate):
     """
     Create new user.
     """
@@ -27,9 +24,7 @@ def create_new_user(
 
 
 @router.get("/me", response_model=schemas.User)
-async def read_users_me(
-    current_user: models.User = Depends(get_current_active_user)
-):
+async def read_users_me(current_user: models.User = Depends(get_current_active_user)):
     """
     Get current user.
     """

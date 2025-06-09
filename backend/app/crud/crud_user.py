@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.auth.security import get_password_hash
 
+
 def get_user_by_email(db: Session, *, email: str) -> models.User | None:
     return db.query(models.User).filter(models.User.email == email).first()
+
 
 def create_user(db: Session, *, user_in: schemas.UserCreate) -> models.User:
     hashed_password = get_password_hash(user_in.password)
