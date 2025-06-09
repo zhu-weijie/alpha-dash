@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Optional
 
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "alpha-dash"
     API_V1_STR: str = "/api/v1"
@@ -20,18 +21,17 @@ class Settings(BaseSettings):
     @property
     def REDIS_URL(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
-    
+
     @property
     def SHARED_CACHE_REDIS_URL(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/1"
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 @lru_cache()
 def get_settings():
     return Settings()
+
 
 settings = get_settings()

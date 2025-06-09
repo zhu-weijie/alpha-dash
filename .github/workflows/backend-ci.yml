@@ -1,0 +1,52 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  build-and-test:
+    name: Build and Test Backend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Lint with Ruff
+        run: |
+          ruff check . --output-format=github 
+      
+      - name: Format Check with Black
+        run: |
+          black --check .
+
+      - name: Run unit tests with Pytest
+        run: |
+          pytest 
+      - name: Build Docker image
+        run: |
+          docker build -t alpha-dash-backend:ci-${{ github.sha }} .

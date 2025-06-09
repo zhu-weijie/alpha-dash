@@ -6,7 +6,9 @@ from app.core.config import settings
 from datetime import datetime, date
 
 try:
-    shared_redis_client = redis.Redis.from_url(settings.SHARED_CACHE_REDIS_URL, decode_responses=True)
+    shared_redis_client = redis.Redis.from_url(
+        settings.SHARED_CACHE_REDIS_URL, decode_responses=True
+    )
     shared_redis_client.ping()
     print("SHARED_CACHE: Successfully connected to Redis for shared cache.")
 except redis.exceptions.ConnectionError as e:
