@@ -3,6 +3,7 @@ import axios from 'axios';
 import { PortfolioSummary, PortfolioHolding, BackendPortfolioHoldingCreate, PortfolioHoldingUpdatePayload } from '../types/portfolio';
 import { HistoricalPricePoint } from '../types/marketData';
 import { Asset, AssetCreatePayload } from '../types/asset';
+import { notifyError } from '../utils/notifications';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -21,8 +22,13 @@ export const getPortfolioSummary = async (): Promise<PortfolioSummary> => {
             { headers: getAuthHeaders() }
         );
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.detail || 
+                             (error.isAxiosError && error.message === 'Network Error' ? 'Network Error: Could not connect to server.' : error.message) ||
+                             "An unexpected error occurred fetching portfolio.";
         console.error("Error fetching portfolio summary:", error);
+        notifyError(errorMessage);
+            
         if (axios.isAxiosError(error) && error.response?.status === 401) {
             window.location.href = '/login';
         }
