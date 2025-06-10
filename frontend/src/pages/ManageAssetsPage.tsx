@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { createAsset } from '../services/apiService';
 import { AssetCreatePayload, AssetType } from '../types/asset';
+import Spinner from '../components/Common/Spinner';
 
 const ManageAssetsPage: React.FC = () => {
     const [formData, setFormData] = useState<AssetCreatePayload>({
@@ -66,7 +67,14 @@ const ManageAssetsPage: React.FC = () => {
                     </select>
                 </div>
                 <button type="submit" disabled={loading} style={buttonStyle}>
-                    {loading ? 'Creating...' : 'Create Asset'}
+                    {loading ? (
+                        <>
+                            <Spinner size={20} color="white" inline={true} /> 
+                            Creating... 
+                        </>
+                    ) : (
+                        'Create Asset'
+                    )}
                 </button>
             </form>
             {/* TODO: Add a list of existing assets here later */}
