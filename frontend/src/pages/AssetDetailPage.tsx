@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { getAssetHistoricalData } from '../services/apiService';
 import { HistoricalPricePoint } from '../types/marketData';
 import AssetChart from '../components/Charts/AssetChart';
+import Spinner from '../components/Common/Spinner';
 
 const AssetDetailPage: React.FC = () => {
     const { symbol } = useParams<{ symbol: string }>();
@@ -37,7 +38,14 @@ const AssetDetailPage: React.FC = () => {
     }, [symbol, outputSize]);
 
     if (!symbol) return <p>No asset symbol specified.</p>;
-    if (loading) return <p>Loading chart data for {symbol}...</p>;
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                <Spinner size={60} />
+                <p>Loading chart data for {symbol}...</p>
+            </div>
+        );
+    }
     if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
     if (!historicalData || historicalData.length === 0) return <p>No historical data found for {symbol}.</p>;
 
