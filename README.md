@@ -55,6 +55,7 @@ AlphaDash is a full-stack web application designed to help users track their fin
 *   **Containerization:** Docker, Docker Compose
 *   **CI/CD:** GitHub Actions (Linting, Formatting, Testing, Docker Build)
 *   **Version Control:** Git, GitHub
+*   **Development Methodology:** Issue-driven development (using GitHub Issues and PRs for feature tracking and code review)
 
 ## Architecture Overview
 
@@ -88,7 +89,7 @@ v
 
 *   Docker Desktop (or Docker Engine + Docker Compose) installed and running.
 *   Git installed.
-*   (Optional, for direct backend/frontend dev without full Docker Compose build initially) Python 3.13 and Node.js v24 installed.
+*   (For direct backend/frontend dev without full Docker Compose build initially) Python 3.11+ and Node.js latest LTS version installed.
 
 ### Installation & Running
 
@@ -134,7 +135,7 @@ v
     cd alpha-dash
     # Execute alembic upgrade command inside the backend container (or locally if DB exposed and configured)
     docker compose exec backend alembic upgrade head
-    # OR, if running locally from backend directory (ensure venv active):
+    # OR, if running locally from backend directory (ensure venv active, and ensure your backend/.env is configured to point to the Dockerized PostgreSQL (e.g., DATABASE_URL=postgresql://alphadash_user:alphadash_pass@localhost:5432/alphadash_db) if running Alembic locally against the Docker DB.):
     # cd backend
     # python3.13 -m venv .venv
     # source .venv/bin/activate
@@ -171,7 +172,7 @@ For detailed API documentation, please run the application and visit `http://loc
 Here is a screenshot of the API docs:
 ![API Docs](./img/api-docs.png)
 
-## Key Technical Review Points
+## Project Highlights
 
 *   **Full-Stack Development:** Building both backend (Python/FastAPI) and frontend (React/TypeScript) components.
 *   **API Design & Development:** Creating RESTful APIs with FastAPI, including request/response validation (Pydantic), authentication (JWT), and clear endpoint structuring.
@@ -204,7 +205,7 @@ Here is a screenshot of the API docs:
 *   **Scalability Improvements for Data Fetching:** Implement more advanced batching or a dedicated data ingestion pipeline for financial data if scaling to many users/assets.
 *   **OAuth2 Scopes:** Implement more granular permissions using OAuth2 scopes.
 
-## Screenshots for the key pages
+## Screenshots for the Key Pages
 
 *   Portfolio Overview Page
 
