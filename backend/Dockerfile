@@ -3,29 +3,27 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Set environment variables to prevent Python from writing .pyc files to disk
-# and to prevent buffering of stdout and stderr
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# Install system dependencies if any (e.g., for psycopg2 if not using -binary, but -binary includes them)
-# RUN apt-get update && apt-get install -y ... && rm -rf /var/lib/apt/lists/*
+ARG APP_USER=appuser
+ARG APP_UID=1000
+ARG APP_GID=1000
 
-# Copy the requirements file into the container
+RUN groupadd -g ${APP_GID} ${APP_USER} && \
+    useradd -u ${APP_UID} -g ${APP_USER} -d /app -s /bin/sh ${APP_USER} && \
+    mkdir -p /app && \
+    chown ${APP_USER}:${APP_USER} /app
+
 COPY ./requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /app/requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
-# Copy the rest of the application code into the container
 COPY . /app/
+RUN chown -R ${APP_USER}:${APP_USER} /app
 
-# Expose the port the app runs on (Uvicorn default is 8000)
+USER ${APP_USER}
+
 EXPOSE 8000
 
-# Command to run the application
-# For development with auto-reload:
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-# For production, you might remove --reload:
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -39,6 +39,7 @@ services:
       ALGORITHM: "HS256"
       REDIS_HOST: "redis_cache"
       REDIS_PORT: "6379"
+      ALPHA_VANTAGE_API_KEY: "${ALPHA_VANTAGE_API_KEY}"
 
   celery_worker:
     build: ./backend
@@ -54,14 +55,17 @@ services:
       REDIS_HOST: "redis_cache"
       REDIS_PORT: "6379"
       ALPHA_VANTAGE_API_KEY: "${ALPHA_VANTAGE_API_KEY}"
+      SECRET_KEY: "${SECRET_KEY}" 
+      ALGORITHM: "HS256"
+      PROJECT_NAME: "${PROJECT_NAME:-alpha-dash}"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "${ACCESS_TOKEN_EXPIRE_MINUTES:-30}"
 
   celery_beat:
     build: ./backend
     container_name: alphadash_celery_beat
-    command: celery -A app.core.celery_app beat -l info -s /tmp/celerybeat-schedule
+    command: celery -A app.core.celery_app beat -l info -s /app/celerybeat-schedule 
     volumes:
-      - ./backend:/app
-      - celery_beat_schedule:/tmp/celerybeat
+      - ./backend:/app 
     depends_on:
       - db
       - redis_cache
@@ -70,6 +74,10 @@ services:
       REDIS_HOST: "redis_cache"
       REDIS_PORT: "6379"
       ALPHA_VANTAGE_API_KEY: "${ALPHA_VANTAGE_API_KEY}"
+      SECRET_KEY: "${SECRET_KEY}"
+      ALGORITHM: "HS256"
+      PROJECT_NAME: "${PROJECT_NAME:-alpha-dash}"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "${ACCESS_TOKEN_EXPIRE_MINUTES:-30}"
 
   frontend:
     build: ./frontend
@@ -78,7 +86,7 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - /app/node_modules 
     depends_on:
       - backend
     stdin_open: true
@@ -87,4 +95,3 @@ services:
 volumes:
   postgres_data:
   redis_cache_data:
-  celery_beat_schedule:
