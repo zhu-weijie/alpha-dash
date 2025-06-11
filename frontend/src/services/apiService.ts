@@ -65,11 +65,17 @@ export const getAssetBySymbol = async (symbol: string): Promise<Asset | null> =>
             return response.data[0];
         }
         return null;
-    } catch (error) {
-        console.error(`Error fetching asset by symbol ${symbol}:`, error);
+    } catch (error: any) {
         if (axios.isAxiosError(error) && error.response?.status === 404) {
+            console.warn(`Asset with symbol ${symbol} not found (404).`);
             return null;
         }
+        
+        const errorMessage = error.response?.data?.detail ||
+                             (error.isAxiosError && error.message === 'Network Error' ? `Network Error fetching asset ${symbol}.` : error.message) ||
+                             `Failed to fetch asset ${symbol}.`;
+        console.error(`Error fetching asset by symbol ${symbol}:`, error);
+        notifyError(errorMessage);
         throw error;
     }
 };
