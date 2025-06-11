@@ -131,8 +131,12 @@ export const updatePortfolioHolding = async (
             { headers: getAuthHeaders() }
         );
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.detail ||
+                             (error.isAxiosError && error.message === 'Network Error' ? `Network Error updating holding ${holdingId}.` : error.message) ||
+                             `Failed to update portfolio holding ${holdingId}.`;
         console.error(`Error updating portfolio holding ${holdingId}:`, error);
+        notifyError(errorMessage);
         throw error;
     }
 };
