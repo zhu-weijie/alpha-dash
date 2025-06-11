@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { createAsset } from '../services/apiService';
 import { AssetCreatePayload, AssetType } from '../types/asset';
 import Spinner from '../components/Common/Spinner';
+import { notifyError, notifySuccess } from '../utils/notifications';
 
 const ManageAssetsPage: React.FC = () => {
     const [formData, setFormData] = useState<AssetCreatePayload>({
@@ -25,21 +26,23 @@ const ManageAssetsPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        setSuccessMessage(null);
         setLoading(true);
-
+    
         if (!formData.symbol.trim() || !formData.name.trim()) {
             setError("Symbol and Name are required.");
+            notifyError("Symbol and Name are required.");
             setLoading(false);
             return;
         }
-
+    
         try {
             const newAsset = await createAsset(formData);
-            setSuccessMessage(`Asset "${newAsset.name} (${newAsset.symbol})" created successfully!`);
+            notifySuccess(`Asset "${newAsset.name} (${newAsset.symbol})" created successfully!`);
             setFormData({ symbol: '', name: '', asset_type: AssetType.STOCK });
         } catch (err: any) {
-            setError(err.response?.data?.detail || err.message || "Failed to create asset.");
+            if (!err.response) {
+                notifyError(err.message || "Failed to create asset.");
+            }
         } finally {
             setLoading(false);
         }
