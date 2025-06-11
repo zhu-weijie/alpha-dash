@@ -4,6 +4,7 @@ import { PortfolioHoldingCreatePayload, BackendPortfolioHoldingCreate, Portfolio
 import { Asset } from '../../types/asset';
 import { getAssetBySymbol } from '../../services/apiService';
 import Spinner from '../Common/Spinner';
+import { notifySuccess } from '../../utils/notifications';
 
 
 interface HoldingFormProps {
@@ -131,6 +132,7 @@ const HoldingForm: React.FC<HoldingFormProps> = ({
                 };
             }
             await onSubmitForm(submitData);
+            notifySuccess(`Holding ${mode === 'add' ? 'added' : 'updated'} successfully!`);
             onClose();
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message || `Failed to ${mode} holding.`);
