@@ -4,6 +4,8 @@ import { getPortfolioSummary, addPortfolioHolding, updatePortfolioHolding, delet
 import { PortfolioSummary, PortfolioHolding, PortfolioHoldingUpdatePayload, BackendPortfolioHoldingCreate } from '../types/portfolio';
 import HoldingForm from '../components/Portfolio/HoldingForm';
 import { Link as RouterLink } from 'react-router-dom';
+import Spinner from '../components/Common/Spinner';
+import { notifySuccess } from '../utils/notifications';
 
 const thStyle: React.CSSProperties = { border: '1px solid #ddd', padding: '8px', textAlign: 'left', backgroundColor: '#f2f2f2' };
 const tdStyle: React.CSSProperties = { border: '1px solid #ddd', padding: '8px', textAlign: 'left' };
@@ -78,6 +80,7 @@ const PortfolioPage: React.FC = () => {
             try {
                 setError(null);
                 await deletePortfolioHolding(holdingId);
+                notifySuccess("Holding deleted successfully!");
                 fetchPortfolioData();
             } catch (err: any) {
                 setError(err.response?.data?.detail || err.message || "Failed to delete holding.");
@@ -85,8 +88,15 @@ const PortfolioPage: React.FC = () => {
         }
     };
     
-    if (loading) return <p>Loading portfolio...</p>;
-    if (error) return <p style={{ color: 'red' }}>Error: {error}</p>;
+    if (loading && !isFormModalOpen) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                <Spinner size={60} />
+                <p>Loading portfolio...</p>
+            </div>
+        );
+    }
+    if (error && !isFormModalOpen) return <p style={{ color: 'red' }}>Error: {error}</p>;
     if (!portfolio) return <p>No portfolio data found.</p>;
 
     const formatCurrency = (value?: number | null) => {

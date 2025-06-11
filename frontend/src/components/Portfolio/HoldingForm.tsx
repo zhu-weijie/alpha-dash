@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { PortfolioHoldingCreatePayload, BackendPortfolioHoldingCreate, PortfolioHoldingUpdatePayload } from '../../types/portfolio';
 import { Asset } from '../../types/asset';
 import { getAssetBySymbol } from '../../services/apiService';
+import Spinner from '../Common/Spinner';
+import { notifySuccess } from '../../utils/notifications';
 
 
 interface HoldingFormProps {
@@ -130,6 +132,7 @@ const HoldingForm: React.FC<HoldingFormProps> = ({
                 };
             }
             await onSubmitForm(submitData);
+            notifySuccess(`Holding ${mode === 'add' ? 'added' : 'updated'} successfully!`);
             onClose();
         } catch (err: any) {
             setError(err.response?.data?.detail || err.message || `Failed to ${mode} holding.`);
@@ -155,12 +158,23 @@ const HoldingForm: React.FC<HoldingFormProps> = ({
                     <div> <label htmlFor="quantity">Quantity:</label> <input type="number" id="quantity" name="quantity" value={formData.quantity} onChange={handleChange} step="any" required /> </div>
                     <div> <label htmlFor="purchase_price">Purchase Price:</label> <input type="number" id="purchase_price" name="purchase_price" value={formData.purchase_price} onChange={handleChange} step="any" required /> </div>
                     <div> <label htmlFor="purchase_date">Purchase Date:</label> <input type="date" id="purchase_date" name="purchase_date" value={formData.purchase_date} onChange={handleChange} required /> </div>
-                    <button type="submit" disabled={loading}> {loading ? 'Saving...' : (mode === 'add' ? 'Add' : 'Update')} Holding </button>
+                    <button type="submit" disabled={loading} style={buttonStyle}>
+                            {loading ? (
+                                <>
+                                    <Spinner size={20} color="white" inline={true} /> 
+                                    Saving... 
+                                </>
+                            ) : (
+                                (mode === 'add' ? 'Add' : 'Update') + ' Holding'
+                            )}
+                        </button>
                     <button type="button" onClick={onClose}> Cancel </button>
                 </form>
             </div>
         </div>
     );
 };
+
+const buttonStyle: React.CSSProperties = { padding: '10px 15px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#007bff', color: 'white' };
 
 export default HoldingForm;

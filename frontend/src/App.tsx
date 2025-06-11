@@ -1,12 +1,11 @@
 // src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import PortfolioPage from './pages/PortfolioPage';
 import AssetDetailPage from './pages/AssetDetailPage';
 import ManageAssetsPage from './pages/ManageAssetsPage';
-// import LoginPage from './pages/LoginPage';
-// import RegisterPage from './pages/RegisterPage';
-// import HomePage from './pages/HomePage';
 
 const isAuthenticated = () => !!localStorage.getItem('authToken');
 
@@ -20,7 +19,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
   return <>{children}</>;
 };
-
 
 function App() {
     const handleLogout = () => {
@@ -43,9 +41,6 @@ function App() {
                 </nav>
                 <hr />
                 <Routes>
-                    {/* <Route path="/" element={<HomePage />} /> */}
-                    {/* <Route path="/login" element={<LoginPage />} /> */}
-                    {/* <Route path="/register" element={<RegisterPage />} /> */}
                     <Route 
                         path="/portfolio" 
                         element={
@@ -74,6 +69,18 @@ function App() {
                     <Route path="/login" element={<div><h2>Login Page Placeholder</h2><p>Implement actual login form here which sets 'authToken' in localStorage.</p><button onClick={() => { localStorage.setItem('authToken', 'fake-test-token'); window.location.href = '/portfolio';}}>Simulate Login</button></div>} />
 
                 </Routes>
+                <ToastContainer
+                    position="top-right"
+                    autoClose={5000}
+                    hideProgressBar={false}
+                    newestOnTop={false}
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                    theme="colored"
+                />
             </div>
         </Router>
     );
