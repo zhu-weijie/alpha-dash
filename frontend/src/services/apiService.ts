@@ -45,8 +45,12 @@ export const getAssetHistoricalData = async (
             `${API_BASE_URL}/market-data/${symbol}/history?outputsize=${outputsize}`,
         );
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.detail ||
+                             (error.isAxiosError && error.message === 'Network Error' ? `Network Error fetching history for ${symbol}.` : error.message) ||
+                             `Failed to fetch historical data for ${symbol}.`;
         console.error(`Error fetching historical data for ${symbol}:`, error);
+        notifyError(errorMessage);
         throw error;
     }
 };
