@@ -90,8 +90,12 @@ export const addPortfolioHolding = async (
             { headers: getAuthHeaders() }
         );
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.detail ||
+                             (error.isAxiosError && error.message === 'Network Error' ? 'Network Error: Could not add holding.' : error.message) ||
+                             "Failed to add portfolio holding.";
         console.error("Error adding portfolio holding:", error);
+        notifyError(errorMessage);
         throw error;
     }
 };
