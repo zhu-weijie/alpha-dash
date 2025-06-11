@@ -148,8 +148,12 @@ export const deletePortfolioHolding = async (holdingId: number): Promise<void | 
             { headers: getAuthHeaders() }
         );
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.detail ||
+                             (error.isAxiosError && error.message === 'Network Error' ? `Network Error deleting holding ${holdingId}.` : error.message) ||
+                             `Failed to delete portfolio holding ${holdingId}.`;
         console.error(`Error deleting portfolio holding ${holdingId}:`, error);
+        notifyError(errorMessage);
         throw error;
     }
 };
