@@ -110,8 +110,12 @@ export const createAsset = async (
             { headers: getAuthHeaders() }
         );
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.detail ||
+                             (error.isAxiosError && error.message === 'Network Error' ? 'Network Error: Could not create asset.' : error.message) ||
+                             "Failed to create asset.";
         console.error("Error creating asset:", error);
+        notifyError(errorMessage);
         throw error;
     }
 };
