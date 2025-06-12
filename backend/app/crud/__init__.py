@@ -7,6 +7,7 @@ from .crud_asset import (
     get_assets,
     update_asset,
     remove_asset,
+    update_asset_last_price_timestamp,
 )
 from .crud_portfolio_holding import (
     create_portfolio_holding,
@@ -30,4 +31,5 @@ __all__ = [
     "get_portfolio_holding",
     "update_portfolio_holding",
     "remove_portfolio_holding",
+    "update_asset_last_price_timestamp",
 ]

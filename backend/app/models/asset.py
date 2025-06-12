@@ -15,14 +15,12 @@ class Asset(Base):
     __tablename__ = "assets"
 
     id = Column(Integer, primary_key=True, index=True)
-    symbol = Column(
-        String, unique=True, index=True, nullable=False
-    )  # e.g., AAPL, BTCUSD
-    name = Column(String, index=True)  # e.g., Apple Inc., Bitcoin
-    asset_type = Column(
-        SAEnum(AssetType), nullable=False, index=True
-    )  # stock or crypto
+    symbol = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True)
+    asset_type = Column(SAEnum(AssetType), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    last_price_updated_at = Column(DateTime(timezone=True), nullable=True, default=None)
 
     holdings = relationship("PortfolioHolding", back_populates="asset_info")

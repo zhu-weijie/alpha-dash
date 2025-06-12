@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional, Union, Dict, Any
 from app import models, schemas
+from datetime import datetime
 
 
 def get_asset(db: Session, asset_id: int) -> Optional[models.Asset]:
@@ -18,7 +19,7 @@ def get_assets(db: Session, skip: int = 0, limit: int = 100) -> List[models.Asse
 
 def create_asset(db: Session, *, asset_in: schemas.AssetCreate) -> models.Asset:
     db_asset = models.Asset(
-        symbol=asset_in.symbol.upper(),  # Store symbols in uppercase for consistency
+        symbol=asset_in.symbol.upper(),
         name=asset_in.name,
         asset_type=asset_in.asset_type,
     )
@@ -37,9 +38,9 @@ def update_asset(
     if isinstance(obj_in, dict):
         update_data = obj_in
     else:
-        update_data = obj_in.model_dump(exclude_unset=True)  # Pydantic V2, was .dict()
+        update_data = obj_in.model_dump(exclude_unset=True)
 
-    if "symbol" in update_data:  # Ensure symbol is also uppercased on update
+    if "symbol" in update_data:
         update_data["symbol"] = update_data["symbol"].upper()
 
     for field, value in update_data.items():
@@ -52,8 +53,21 @@ def update_asset(
 
 
 def remove_asset(db: Session, *, asset_id: int) -> Optional[models.Asset]:
-    db_obj = db.query(models.Asset).get(asset_id)  # .get() is efficient for PK lookup
+    db_obj = db.query(models.Asset).get(asset_id)
     if db_obj:
         db.delete(db_obj)
         db.commit()
-    return db_obj  # Returns the deleted object or None if not found
+    return db_obj
+
+
+def update_asset_last_price_timestamp(
+    db: Session, *, asset_model: models.Asset, timestamp: datetime
+) -> models.Asset:
+    """
+    Updates the last_price_updated_at timestamp for a given asset model.
+    """
+    asset_model.last_price_updated_at = timestamp
+    db.add(asset_model)
+    db.commit()
+    db.refresh(asset_model)
+    return asset_model
