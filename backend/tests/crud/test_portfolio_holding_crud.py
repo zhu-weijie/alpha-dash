@@ -5,21 +5,28 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 
 from app import crud, models, schemas
+from app.models.asset import AssetType
 
 
 @pytest.fixture
 def mock_db_session():
     """Reusable mock SQLAlchemy Session."""
     db_session = MagicMock(spec=Session)
-    mock_query = db_session.query.return_value
-    mock_filter = mock_query.filter.return_value
-    mock_options = mock_filter.options.return_value
-    mock_offset = mock_options.offset.return_value
-    mock_limit = mock_offset.limit.return_value
+    mock_query_obj = db_session.query.return_value
+    mock_join_obj = mock_query_obj.join.return_value
+    mock_filter_obj = mock_join_obj.filter.return_value
 
-    mock_filter.first.return_value = None
-    mock_options.first.return_value = None
-    mock_limit.all.return_value = []
+    mock_options_obj = mock_filter_obj.options.return_value
+    mock_offset_obj = mock_options_obj.offset.return_value
+    mock_limit_obj = mock_offset_obj.limit.return_value
+
+    mock_group_by_obj = mock_filter_obj.group_by.return_value
+    mock_order_by_obj = mock_group_by_obj.order_by.return_value
+
+    mock_options_obj.first.return_value = None
+    mock_limit_obj.all.return_value = []
+    mock_order_by_obj.all.return_value = []
+
     return db_session
 
 
@@ -267,3 +274,120 @@ def test_remove_portfolio_holding_not_found_or_not_owned(mock_db_session: Sessio
         )
         mock_db_session.delete.assert_not_called()
         mock_db_session.commit.assert_not_called()
+
+
+def test_get_user_aggregated_asset_summary_no_holdings(mock_db_session: Session):
+    user_id = 1
+    mock_db_session.query.return_value.join.return_value.filter.return_value.group_by.return_value.order_by.return_value.all.return_value = (
+        []
+    )
+
+    summary = crud.get_user_aggregated_asset_summary(
+        db=mock_db_session, user_id=user_id
+    )
+    assert summary == []
+
+
+def test_get_user_aggregated_asset_summary_single_asset_single_holding(
+    mock_db_session: Session,
+):
+    user_id = 1
+    mock_row = MagicMock()
+    mock_row.asset_id = 101
+    mock_row.symbol = "AAPL"
+    mock_row.name = "Apple Inc."
+    mock_row.asset_type = AssetType.STOCK
+    mock_row.total_quantity = 10.0
+    mock_row.weighted_average_purchase_price = 150.0
+
+    mock_db_session.query.return_value.join.return_value.filter.return_value.group_by.return_value.order_by.return_value.all.return_value = [
+        mock_row
+    ]
+
+    summary = crud.get_user_aggregated_asset_summary(
+        db=mock_db_session, user_id=user_id
+    )
+
+    assert len(summary) == 1
+    item = summary[0]
+    assert item["asset_id"] == 101
+    assert item["symbol"] == "AAPL"
+    assert item["name"] == "Apple Inc."
+    assert item["asset_type"] == AssetType.STOCK
+    assert item["total_quantity"] == 10.0
+    assert item["weighted_average_purchase_price"] == 150.0
+
+
+def test_get_user_aggregated_asset_summary_single_asset_multiple_holdings(
+    mock_db_session: Session,
+):
+    user_id = 1
+    mock_row_aggregated_aapl = MagicMock()
+    mock_row_aggregated_aapl.asset_id = 101
+    mock_row_aggregated_aapl.symbol = "AAPL"
+    mock_row_aggregated_aapl.name = "Apple Inc."
+    mock_row_aggregated_aapl.asset_type = AssetType.STOCK
+    mock_row_aggregated_aapl.total_quantity = 15.0
+    mock_row_aggregated_aapl.weighted_average_purchase_price = 153.33333333333334
+
+    mock_db_session.query.return_value.join.return_value.filter.return_value.group_by.return_value.order_by.return_value.all.return_value = [
+        mock_row_aggregated_aapl
+    ]
+
+    summary = crud.get_user_aggregated_asset_summary(
+        db=mock_db_session, user_id=user_id
+    )
+
+    assert len(summary) == 1
+    item = summary[0]
+    assert item["asset_id"] == 101
+    assert item["symbol"] == "AAPL"
+    assert item["total_quantity"] == 15.0
+    assert item["weighted_average_purchase_price"] == pytest.approx(153.33333333333334)
+
+
+def test_get_user_aggregated_asset_summary_multiple_distinct_assets(
+    mock_db_session: Session,
+):
+    user_id = 1
+    mock_row_aapl = MagicMock()
+    mock_row_aapl.asset_id = 101
+    mock_row_aapl.symbol = "AAPL"
+    mock_row_aapl.name = "Apple Inc."
+    mock_row_aapl.asset_type = AssetType.STOCK
+    mock_row_aapl.total_quantity = 15.0
+    mock_row_aapl.weighted_average_purchase_price = 153.33
+    mock_row_btc = MagicMock()
+    mock_row_btc.asset_id = 102
+    mock_row_btc.symbol = "BTC"
+    mock_row_btc.name = "Bitcoin"
+    mock_row_btc.asset_type = AssetType.CRYPTO
+    mock_row_btc.total_quantity = 0.5
+    mock_row_btc.weighted_average_purchase_price = 30000.0
+    mock_db_session.query.return_value.join.return_value.filter.return_value.group_by.return_value.order_by.return_value.all.return_value = [
+        mock_row_aapl,
+        mock_row_btc,
+    ]
+
+    summary = crud.get_user_aggregated_asset_summary(
+        db=mock_db_session, user_id=user_id
+    )
+
+    assert len(summary) == 2
+
+    mock_join_method = mock_db_session.query.return_value.join
+    mock_join_method.assert_called_once()
+
+    args_called, kwargs_called = mock_join_method.call_args
+
+    assert args_called[0] == models.Asset
+
+    expected_join_condition_str = str(
+        models.PortfolioHolding.asset_id == models.Asset.id
+    )
+    actual_join_condition_str = str(args_called[1])
+    assert actual_join_condition_str == expected_join_condition_str
+
+    mock_db_session.query.return_value.join.return_value.filter.assert_called()
+    mock_db_session.query.return_value.join.return_value.filter.return_value.group_by.assert_called()
+    mock_db_session.query.return_value.join.return_value.filter.return_value.group_by.return_value.order_by.assert_called()
