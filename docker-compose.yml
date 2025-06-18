@@ -92,6 +92,21 @@ services:
     stdin_open: true
     tty: true
 
+  neo4j_db:
+    image: neo4j:5.26.8
+    container_name: alphadash_neo4j_db
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_alpha_dash_data:/data
+      - neo4j_alpha_dash_logs:/logs
+    environment:
+      - NEO4J_AUTH=none 
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_cache_data:
+  neo4j_alpha_dash_data:
+  neo4j_alpha_dash_logs:
