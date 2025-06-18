@@ -15,6 +15,7 @@ from .crud_portfolio_holding import (
     get_portfolio_holding,
     update_portfolio_holding,
     remove_portfolio_holding,
+    get_user_aggregated_asset_summary,
 )
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "update_portfolio_holding",
     "remove_portfolio_holding",
     "update_asset_last_price_timestamp",
+    "get_user_aggregated_asset_summary",
 ]
