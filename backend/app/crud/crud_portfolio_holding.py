@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Union, Dict, Any
 from app import models, schemas
 from app.crud import get_asset
+from sqlalchemy import func, cast, Float
 
 
 def create_portfolio_holding(
@@ -74,3 +75,59 @@ def remove_portfolio_holding(
         db.commit()
         return db_holding
     return None
+
+
+def get_user_aggregated_asset_summary(
+    db: Session, *, user_id: int
+) -> List[Dict[str, Any]]:
+    """
+    Gets a summary of distinct assets held by a user, with total quantity
+    and weighted average purchase price for each asset.
+    """
+    sum_quantity = func.sum(models.PortfolioHolding.quantity)
+    sum_total_cost = func.sum(
+        models.PortfolioHolding.quantity * models.PortfolioHolding.purchase_price
+    )
+
+    summary_query = (
+        db.query(
+            models.Asset.id.label("asset_id"),
+            models.Asset.symbol.label("symbol"),
+            models.Asset.name.label("name"),
+            models.Asset.asset_type.label("asset_type"),
+            sum_quantity.label("total_quantity"),
+            (
+                cast(sum_total_cost, Float)
+                / func.nullif(cast(sum_quantity, Float), 0.0)
+            ).label("weighted_average_purchase_price"),
+        )
+        .join(models.Asset, models.PortfolioHolding.asset_id == models.Asset.id)
+        .filter(models.PortfolioHolding.user_id == user_id)
+        .group_by(
+            models.Asset.id,
+            models.Asset.symbol,
+            models.Asset.name,
+            models.Asset.asset_type,
+        )
+        .order_by(models.Asset.symbol)
+    )
+
+    results = summary_query.all()
+
+    return [
+        {
+            "asset_id": r.asset_id,
+            "symbol": r.symbol,
+            "name": r.name,
+            "asset_type": r.asset_type,
+            "total_quantity": (
+                float(r.total_quantity) if r.total_quantity is not None else 0.0
+            ),
+            "weighted_average_purchase_price": (
+                float(r.weighted_average_purchase_price)
+                if r.weighted_average_purchase_price is not None
+                else 0.0
+            ),
+        }
+        for r in results
+    ]

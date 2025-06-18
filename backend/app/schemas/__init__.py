@@ -1,14 +1,15 @@
 # app/schemas/__init__.py
-from .user import User, UserCreate  # noqa
-from .token import Token, TokenData  # noqa
-from .asset import Asset, AssetCreate, AssetUpdate  # noqa
+from .user import User, UserCreate
+from .token import Token, TokenData
+from .asset import Asset, AssetCreate, AssetUpdate
 from .portfolio_holding import (
     PortfolioHolding,
     PortfolioHoldingCreate,
     PortfolioHoldingUpdate,
-)  # noqa
-from .financial_data import AssetCurrentPrice, HistoricalPricePoint  # noqa
-from .portfolio_summary import PortfolioSummary  # noqa
+)
+from .financial_data import AssetCurrentPrice, HistoricalPricePoint
+from .portfolio_summary import PortfolioSummary
+from .user_asset_summary import UserAssetSummaryItem
 
 __all__ = [
     "User",
@@ -24,4 +25,5 @@ __all__ = [
     "AssetCurrentPrice",
     "HistoricalPricePoint",
     "PortfolioSummary",
+    "UserAssetSummaryItem",
 ]
