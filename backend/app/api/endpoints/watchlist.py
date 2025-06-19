@@ -1,5 +1,5 @@
 # app/api/endpoints/watchlist.py
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Any
 
@@ -59,15 +59,17 @@ def read_user_watchlist(
     return items
 
 
-@router.delete(
-    "/items/{asset_id}", status_code=status.HTTP_204_NO_CONTENT
-)  # Or return deleted item
+@router.delete("/items/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_from_user_watchlist(
     *,
     db: Session = Depends(get_db),
     asset_id: int,
     current_user: models.User = Depends(get_current_active_user),
-) -> Any:
+) -> None:
+    """
+    Remove an asset from the current user's watchlist.
+    Returns 204 No Content on success.
+    """
     deleted_item = crud.remove_asset_from_watchlist(
         db=db, asset_id=asset_id, user_id=current_user.id
     )
@@ -76,4 +78,3 @@ def remove_from_user_watchlist(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found in watchlist.",
         )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
