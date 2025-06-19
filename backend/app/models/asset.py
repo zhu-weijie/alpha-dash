@@ -24,3 +24,4 @@ class Asset(Base):
     last_price_updated_at = Column(DateTime(timezone=True), nullable=True, default=None)
 
     holdings = relationship("PortfolioHolding", back_populates="asset_info")
+    watched_by_users_items = relationship("WatchlistItem", back_populates="asset")
