@@ -69,12 +69,6 @@ const PortfolioPage: React.FC = () => {
         }
     };
 
-    const openAddModal = () => {
-        setFormMode('add');
-        setCurrentEditingHolding(null);
-        setIsFormModalOpen(true);
-    };
-
     const openEditModal = (holding: PortfolioHolding) => {
         setFormMode('edit');
         setCurrentEditingHolding(holding);

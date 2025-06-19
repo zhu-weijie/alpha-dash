@@ -12,7 +12,7 @@ const ManageAssetsPage: React.FC = () => {
         asset_type: AssetType.STOCK,
     });
     const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [successMessage] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
