@@ -3,6 +3,7 @@ import axios from 'axios';
 import { PortfolioSummary, PortfolioHolding, BackendPortfolioHoldingCreate, PortfolioHoldingUpdatePayload } from '../types/portfolio';
 import { HistoricalPricePoint } from '../types/marketData';
 import { Asset, AssetCreatePayload } from '../types/asset';
+import { UserAssetSummaryItem } from '../types/userSummary';
 import { notifyError } from '../utils/notifications';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -154,6 +155,22 @@ export const deletePortfolioHolding = async (holdingId: number): Promise<void | 
                              `Failed to delete portfolio holding ${holdingId}.`;
         console.error(`Error deleting portfolio holding ${holdingId}:`, error);
         notifyError(errorMessage);
+        throw error;
+    }
+};
+
+export const getUserAssetSummary = async (): Promise<UserAssetSummaryItem[]> => {
+    try {
+        const response = await axios.get<UserAssetSummaryItem[]>(
+            `${API_BASE_URL}/users/me/asset-summary`,
+            { headers: getAuthHeaders() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching user asset summary:", error);
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+            window.location.href = '/login';
+        }
         throw error;
     }
 };

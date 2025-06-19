@@ -1,7 +1,8 @@
 // src/pages/PortfolioPage.tsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { getPortfolioSummary, addPortfolioHolding, updatePortfolioHolding, deletePortfolioHolding } from '../services/apiService';
+import { getPortfolioSummary, addPortfolioHolding, updatePortfolioHolding, deletePortfolioHolding, getUserAssetSummary } from '../services/apiService';
 import { PortfolioSummary, PortfolioHolding, PortfolioHoldingUpdatePayload, BackendPortfolioHoldingCreate } from '../types/portfolio';
+import { UserAssetSummaryItem } from '../types/userSummary';
 import HoldingForm from '../components/Portfolio/HoldingForm';
 import { Link as RouterLink } from 'react-router-dom';
 import Spinner from '../components/Common/Spinner';
@@ -13,6 +14,7 @@ const tdStyle: React.CSSProperties = { border: '1px solid #ddd', padding: '8px',
 
 const PortfolioPage: React.FC = () => {
     const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
+    const [aggregatedSummary, setAggregatedSummary] = useState<UserAssetSummaryItem[] | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     
@@ -20,12 +22,16 @@ const PortfolioPage: React.FC = () => {
     const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
     const [currentEditingHolding, setCurrentEditingHolding] = useState<PortfolioHolding | null>(null);
 
-    const fetchPortfolioData = useCallback(async () => {
+    const fetchPageData = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await getPortfolioSummary();
-            setPortfolio(data);
+            const [portfolioSum, aggregatedAssetSum] = await Promise.all([
+                getPortfolioSummary(),
+                getUserAssetSummary()
+            ]);
+            setPortfolio(portfolioSum);
+            setAggregatedSummary(aggregatedAssetSum);
         } catch (err: any) {
             setError(err.message || 'Failed to fetch portfolio data.');
             if (err.response && err.response.status === 401) {
@@ -43,11 +49,11 @@ const PortfolioPage: React.FC = () => {
             setLoading(false);
             return;
         }
-        fetchPortfolioData();
-    }, [fetchPortfolioData]);
+        fetchPageData();
+    }, [fetchPageData]);
 
     const formSubmitSuccessCallback = () => {
-        fetchPortfolioData();
+        fetchPageData();
         setIsFormModalOpen(false);
     };
 
@@ -81,7 +87,7 @@ const PortfolioPage: React.FC = () => {
                 setError(null);
                 await deletePortfolioHolding(holdingId);
                 notifySuccess("Holding deleted successfully!");
-                fetchPortfolioData();
+                fetchPageData();
             } catch (err: any) {
                 setError(err.response?.data?.detail || err.message || "Failed to delete holding.");
             }
@@ -109,10 +115,15 @@ const PortfolioPage: React.FC = () => {
         return `${value.toFixed(2)}%`;
     }
 
+    const formatQuantity = (value?: number | null) => {
+        if (value === null || typeof value === 'undefined') return 'N/A';
+        return value.toFixed(4);
+    };
+
     return (
         <div>
             <h2>My Portfolio</h2>
-            <button onClick={openAddModal} style={{ marginBottom: '20px' }}>
+            <button onClick={() => setIsFormModalOpen(true)} style={{ marginBottom: '20px' }}>
                 Add New Holding
             </button>
             
@@ -134,19 +145,49 @@ const PortfolioPage: React.FC = () => {
             
             {portfolio ? (
                 <>
-                    <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
-                        <h4>Summary</h4>
-                        <p>Total Invested: {formatCurrency(portfolio.total_purchase_value)}</p>
-                        <p>Total Current Value: {formatCurrency(portfolio.total_current_value)}</p>
-                        <p>Total Gain/Loss: {formatCurrency(portfolio.total_gain_loss)} 
-                           <span style={{ color: (portfolio.total_gain_loss ?? 0) >= 0 ? 'green' : 'red', marginLeft: '10px' }}>
-                               ({formatPercent(portfolio.total_gain_loss_percent)})
-                           </span>
-                        </p>
-                    </div>
+                    <h3>Summary</h3>
+                    <p>Total Invested: {formatCurrency(portfolio.total_purchase_value)}</p>
+                    <p>Total Current Value: {formatCurrency(portfolio.total_current_value)}</p>
+                    <p>Total Gain/Loss: {formatCurrency(portfolio.total_gain_loss)} 
+                        <span style={{ color: (portfolio.total_gain_loss ?? 0) >= 0 ? 'green' : 'red', marginLeft: '10px' }}>
+                            ({formatPercent(portfolio.total_gain_loss_percent)})
+                        </span>
+                    </p>
 
-                    <h3>Holdings</h3>
-                    {portfolio.holdings.length === 0 ? (
+                    <h3>Aggregated Asset Positions</h3>
+                    {aggregatedSummary && aggregatedSummary.length > 0 ? (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+                            <thead>
+                                <tr>
+                                    <th style={thStyle}>Asset</th>
+                                    <th style={thStyle}>Symbol</th>
+                                    <th style={thStyle}>Type</th>
+                                    <th style={thStyle}>Total Quantity</th>
+                                    <th style={thStyle}>Avg. Purchase Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {aggregatedSummary.map((item: UserAssetSummaryItem) => (
+                                    <tr key={item.asset_id}>
+                                        <td style={tdStyle}>{item.name || 'N/A'}</td>
+                                        <td style={tdStyle}>
+                                            <RouterLink to={`/assets/${item.symbol}/chart`}>
+                                                {item.symbol}
+                                            </RouterLink>
+                                        </td>
+                                        <td style={tdStyle}>{item.asset_type}</td>
+                                        <td style={tdStyle}>{formatQuantity(item.total_quantity)}</td>
+                                        <td style={tdStyle}>{formatCurrency(item.weighted_average_purchase_price)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p>No aggregated asset data to display.</p>
+                    )}
+
+                    <h3>Detailed Holdings</h3>
+                    {portfolio && portfolio.holdings.length === 0 ? (
                         <p>You have no holdings in your portfolio yet.</p>
                     ) : (
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
