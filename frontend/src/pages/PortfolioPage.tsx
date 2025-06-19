@@ -145,16 +145,14 @@ const PortfolioPage: React.FC = () => {
             
             {portfolio ? (
                 <>
-                    <div style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
-                        <h3>Summary</h3>
-                        <p>Total Invested: {formatCurrency(portfolio.total_purchase_value)}</p>
-                        <p>Total Current Value: {formatCurrency(portfolio.total_current_value)}</p>
-                        <p>Total Gain/Loss: {formatCurrency(portfolio.total_gain_loss)} 
-                           <span style={{ color: (portfolio.total_gain_loss ?? 0) >= 0 ? 'green' : 'red', marginLeft: '10px' }}>
-                               ({formatPercent(portfolio.total_gain_loss_percent)})
-                           </span>
-                        </p>
-                    </div>
+                    <h3>Summary</h3>
+                    <p>Total Invested: {formatCurrency(portfolio.total_purchase_value)}</p>
+                    <p>Total Current Value: {formatCurrency(portfolio.total_current_value)}</p>
+                    <p>Total Gain/Loss: {formatCurrency(portfolio.total_gain_loss)} 
+                        <span style={{ color: (portfolio.total_gain_loss ?? 0) >= 0 ? 'green' : 'red', marginLeft: '10px' }}>
+                            ({formatPercent(portfolio.total_gain_loss_percent)})
+                        </span>
+                    </p>
 
                     <h3>Aggregated Asset Positions</h3>
                     {aggregatedSummary && aggregatedSummary.length > 0 ? (
