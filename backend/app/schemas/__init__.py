@@ -10,6 +10,7 @@ from .portfolio_holding import (
 from .financial_data import AssetCurrentPrice, HistoricalPricePoint
 from .portfolio_summary import PortfolioSummary
 from .user_asset_summary import UserAssetSummaryItem
+from .watchlist import WatchlistItemCreate, WatchlistItemResponse
 
 __all__ = [
     "User",
@@ -26,4 +27,6 @@ __all__ = [
     "HistoricalPricePoint",
     "PortfolioSummary",
     "UserAssetSummaryItem",
+    "WatchlistItemCreate",
+    "WatchlistItemResponse",
 ]
