@@ -17,6 +17,12 @@ from .crud_portfolio_holding import (
     remove_portfolio_holding,
     get_user_aggregated_asset_summary,
 )
+from .crud_watchlist import (
+    get_watchlist_item_by_user_and_asset,
+    add_asset_to_watchlist,
+    get_watchlist_items_by_user,
+    remove_asset_from_watchlist,
+)
 
 __all__ = [
     "create_user",
@@ -34,4 +40,8 @@ __all__ = [
     "remove_portfolio_holding",
     "update_asset_last_price_timestamp",
     "get_user_aggregated_asset_summary",
+    "get_watchlist_item_by_user_and_asset",
+    "add_asset_to_watchlist",
+    "get_watchlist_items_by_user",
+    "remove_asset_from_watchlist",
 ]

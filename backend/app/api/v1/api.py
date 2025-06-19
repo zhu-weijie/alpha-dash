@@ -1,6 +1,6 @@
 # app/api/v1/api.py
 from fastapi import APIRouter
-from app.api.endpoints import users, auth, assets, portfolio, market_data
+from app.api.endpoints import users, auth, assets, portfolio, market_data, watchlist
 
 api_router = APIRouter()
 api_router.include_router(users.router, prefix="/users", tags=["users"])
@@ -10,3 +10,4 @@ api_router.include_router(portfolio.router, prefix="/portfolio", tags=["portfoli
 api_router.include_router(
     market_data.router, prefix="/market-data", tags=["market-data"]
 )
+api_router.include_router(watchlist.router, prefix="/watchlist", tags=["watchlist"])
