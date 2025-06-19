@@ -7,7 +7,8 @@ import AssetChart from '../components/Charts/AssetChart';
 import Spinner from '../components/Common/Spinner';
 
 const AssetDetailPage: React.FC = () => {
-    const { symbol } = useParams<{ symbol: string }>();
+    const params = useParams<{ symbol?: string }>();
+    const symbol = params?.symbol;
     const [historicalData, setHistoricalData] = useState<HistoricalPricePoint[] | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -16,7 +17,6 @@ const AssetDetailPage: React.FC = () => {
 
     useEffect(() => {
         if (!symbol) {
-            setError("Asset symbol not provided.");
             setLoading(false);
             return;
         }
