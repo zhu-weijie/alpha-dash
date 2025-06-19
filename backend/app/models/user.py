@@ -16,3 +16,6 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     holdings = relationship("PortfolioHolding", back_populates="owner")
+    watchlist_items = relationship(
+        "WatchlistItem", back_populates="owner", cascade="all, delete-orphan"
+    )
