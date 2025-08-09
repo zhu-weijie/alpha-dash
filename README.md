@@ -298,3 +298,182 @@ MATCH (h:PortfolioHolding {holdingId: 203}), (a:Asset {assetId: 101}) CREATE (h)
 CALL db.awaitIndexes();
 RETURN "Sample Alpha-Dash graph created successfully!" AS status;
 ```
+
+## Design Diagrams
+
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    users {
+        int id PK "Primary Key"
+        varchar email UK "Unique Key"
+        varchar hashed_password
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    assets {
+        int id PK "Primary Key"
+        varchar symbol UK "Unique Key, e.g., AAPL, BTC"
+        varchar name "e.g., Apple Inc."
+        varchar asset_type "Enum: 'stock', 'crypto'"
+        datetime created_at
+        datetime updated_at
+        datetime last_price_updated_at "Nullable, updated by Celery task"
+    }
+
+    portfolio_holdings {
+        int id PK "Primary Key"
+        int user_id FK "Foreign Key to users.id"
+        int asset_id FK "Foreign Key to assets.id"
+        float quantity "Refine: Use DECIMAL(19, 8) for precision"
+        float purchase_price "Refine: Use DECIMAL(19, 4) for precision"
+        datetime purchase_date
+        datetime created_at
+        datetime updated_at
+    }
+
+    users ||--o{ portfolio_holdings : owns
+    assets ||--o{ portfolio_holdings : "is held in"
+```
+
+### Class Diagram
+
+```mermaid
+classDiagram
+    direction LR
+
+    class AssetDetailAPI {
+        <<API Endpoint>>
+        +GET /signals/:symbol?short=20&long=50
+    }
+
+    class SignalService {
+        <<Service>>
+        + get_sma_crossover_signal(symbol, asset_type, short_window, long_window)
+    }
+    
+    class FinancialDataOrchestrator {
+        <<Service>>
+        + get_historical_data(symbol, asset_type, outputsize)
+    }
+
+    class BaseDataProvider {
+        <<Abstract>>
+        +fetch_historical_data()
+    }
+
+    class YahooFinanceProvider {
+        <<DataProvider>>
+        +fetch_yf_historical_data()
+    }
+
+    class AlphaVantageProvider {
+        <<DataProvider>>
+        +fetch_av_stock_historical_data()
+        +fetch_av_crypto_historical_data()
+    }
+
+    class SignalResponse {
+        <<Schema>>
+        List historical_data
+        List signals
+    }
+
+    class SignalPoint {
+        <<Schema>>
+        date date
+        string signal_type
+        Decimal price
+    }
+    
+    AssetDetailAPI ..> SignalService : uses
+    SignalService ..> FinancialDataOrchestrator : uses
+    FinancialDataOrchestrator ..> YahooFinanceProvider : "uses (primary)"
+    FinancialDataOrchestrator ..> AlphaVantageProvider : "uses (fallback)"
+    
+    BaseDataProvider <|-- YahooFinanceProvider : implements
+    BaseDataProvider <|-- AlphaVantageProvider : implements
+    
+    AssetDetailAPI ..> SignalResponse : returns
+    SignalService ..> SignalResponse : returns
+
+    note for BaseDataProvider "Abstract Base Class defines a contract for all data providers."
+    note for SignalPoint "Using Decimal type for financial precision."
+    note for AssetDetailAPI "Signal windows are now configurable via query params."
+```
+
+### Data Flow for a Signal Request
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser
+    participant AssetDetailPage as React Component
+    participant BackendAPI as /api/v1/signals/{symbol}
+    participant SignalService
+    participant DataOrchestrator
+    
+    User->>Browser: Clicks on asset "AAPL" in portfolio
+    Browser->>AssetDetailPage: Renders page for "AAPL"
+    
+    activate AssetDetailPage
+    AssetDetailPage->>BackendAPI: GET /api/v1/signals/AAPL
+    deactivate AssetDetailPage
+    
+    activate BackendAPI
+    BackendAPI->>SignalService: get_sma_crossover_signal("AAPL", "stock")
+    
+    activate SignalService
+    SignalService->>DataOrchestrator: get_historical_data("AAPL", "stock", "full")
+    
+    activate DataOrchestrator
+    Note right of DataOrchestrator: Checks cache first.<br/>On miss, calls provider (e.g., yfinance).
+    DataOrchestrator-->>SignalService: Returns List[HistoricalPricePoint]
+    deactivate DataOrchestrator
+    
+    Note right of SignalService: 1. Calculates 20-day SMA.<br/>2. Calculates 50-day SMA.<br/>3. Finds crossover points.
+    SignalService-->>BackendAPI: Returns { historical_data, signals: [...] }
+    deactivate SignalService
+    
+    BackendAPI-->>Browser: 200 OK (JSON Response)
+    deactivate BackendAPI
+    
+    Browser->>AssetDetailPage: Receives data
+    activate AssetDetailPage
+    Note right of AssetDetailPage: Updates component state and re-renders Chart.js component with new price and signal data.
+    deactivate AssetDetailPage
+```
+
+### Signal Calculation Logic
+
+```mermaid
+flowchart TD
+    A[Start: _find_crossovers] --> B{Receive price data, short SMA, long SMA};
+    B --> C[Initialize empty 'signals' list];
+    C --> D(Loop through data points from day 1 to end);
+    D --> E{Is there a previous day's data?};
+    E -->|Yes| F[Get today's and yesterday's values];
+    E -->|No| G(Continue to next day);
+    G --> D;
+    
+    F --> H{Short SMA > Long SMA Today?};
+    H -->|Yes| I{Short SMA < Long SMA Yesterday?};
+    I -->|Yes| J[Add &quot;Buy&quot; signal for today&apos;s date to list];
+    I -->|No| K(Continue to next day);
+    
+    H -->|No| L{Short SMA < Long SMA Today?};
+    L -->|Yes| M{Short SMA > Long SMA Yesterday?};
+    M -->|Yes| N[Add &quot;Sell&quot; signal for today&apos;s date to list];
+    M -->|No| K;
+    
+    J --> K;
+    N --> K;
+    K --> D;
+    
+    D --> O[End of Loop];
+    O --> P[Return 'signals' list];
+    P --> Q[End];
+```
