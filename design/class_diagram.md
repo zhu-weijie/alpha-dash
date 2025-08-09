@@ -1,16 +1,18 @@
 ```mermaid
 classDiagram
-    direction LR
+    direction TD
 
     class AssetDetailAPI {
         <<API Endpoint>>
         +GET /signals/:symbol?short=20&long=50
     }
+    note for AssetDetailAPI "Signal windows are now configurable via query params."
 
     class SignalService {
         <<Service>>
         + get_sma_crossover_signal(symbol, asset_type, short_window, long_window)
     }
+    note for SignalService "New service for all analytical/signal calculations.\nKeeps API layer clean."
     
     class FinancialDataOrchestrator {
         <<Service>>
@@ -21,6 +23,7 @@ classDiagram
         <<Abstract>>
         +fetch_historical_data()
     }
+    note for BaseDataProvider "Abstract Base Class defines a contract for all data providers."
 
     class YahooFinanceProvider {
         <<DataProvider>>
@@ -45,19 +48,16 @@ classDiagram
         string signal_type
         Decimal price
     }
+    note for SignalPoint "Using Decimal type for financial precision."
     
-    AssetDetailAPI ..> SignalService : uses
-    SignalService ..> FinancialDataOrchestrator : uses
-    FinancialDataOrchestrator ..> YahooFinanceProvider : "uses (primary)"
-    FinancialDataOrchestrator ..> AlphaVantageProvider : "uses (fallback)"
+    AssetDetailAPI --> SignalService : uses
+    SignalService --> FinancialDataOrchestrator : uses
+    FinancialDataOrchestrator --> YahooFinanceProvider : "uses (primary)"
+    FinancialDataOrchestrator --> AlphaVantageProvider : "uses (fallback)"
     
     BaseDataProvider <|-- YahooFinanceProvider : implements
     BaseDataProvider <|-- AlphaVantageProvider : implements
     
-    AssetDetailAPI ..> SignalResponse : returns
-    SignalService ..> SignalResponse : returns
-
-    note for BaseDataProvider "Abstract Base Class defines a contract for all data providers."
-    note for SignalPoint "Using Decimal type for financial precision."
-    note for AssetDetailAPI "Signal windows are now configurable via query params."
+    AssetDetailAPI ..> SignalResponse : "returns"
+    SignalService ..> SignalResponse : "returns"
 ```
