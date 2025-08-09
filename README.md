@@ -477,3 +477,154 @@ flowchart TD
     O --> P[Return 'signals' list];
     P --> Q[End];
 ```
+
+### Frontend Component Diagram
+
+```mermaid
+graph TD
+    subgraph "Routing"
+        App_tsx["App.tsx (Router)"]
+    end
+
+    subgraph "Pages"
+        PortfolioPage["PortfolioPage.tsx"]
+        AssetDetailPage["AssetDetailPage.tsx"]
+    end
+    
+    subgraph "Components"
+        AssetChart["AssetChart.tsx"]
+        PeriodSelector["PeriodSelector.tsx"]
+    end
+
+    subgraph "Services"
+        apiService["apiService.ts"]
+    end
+
+    App_tsx --> PortfolioPage
+    App_tsx --> AssetDetailPage
+    
+    PortfolioPage -- "Link to" --> AssetDetailPage
+    AssetDetailPage --> AssetChart
+    AssetDetailPage --> PeriodSelector
+    
+    PortfolioPage -- "uses" --> apiService
+    AssetDetailPage -- "uses" --> apiService
+    
+    style apiService fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+### Frontend Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Page as "AssetDetailPage (Component)"
+    participant Chart as "AssetChart (Component)"
+    participant APISvc as "apiService.ts"
+    participant BrowserAPI as "Browser Fetch/Axios"
+    
+    User->>Page: Selects "1 Year" from PeriodSelector
+    
+    activate Page
+    Page->>Page: setState(loading: true)
+    Page->>APISvc: getAssetSignals("AAPL", period="1y")
+    
+    activate APISvc
+    APISvc->>BrowserAPI: GET /api/v1/signals/AAPL?period=1y
+    
+    activate BrowserAPI
+    Note right of BrowserAPI: Makes network request to backend.
+    BrowserAPI-->>APISvc: Returns Promise with JSON data
+    deactivate BrowserAPI
+    
+    APISvc-->>Page: Returns Promise<SignalData>
+    deactivate APISvc
+    
+    Page->>Page: setState({ data: SignalData, loading: false })
+    Note right of Page: React triggers a re-render because state changed.
+    
+    Page->>Chart: Passes new data as props
+    
+    activate Chart
+    Note right of Chart: Chart.js library re-renders the canvas with new price line and signal markers.
+    Chart-->>Page: Renders updated chart
+    deactivate Chart
+    
+    Page-->>User: Displays updated chart with signals
+    deactivate Page
+```
+
+### Backend Component Diagram
+
+```mermaid
+graph TD
+    subgraph "API Layer"
+        FastAPI_App["FastAPI App"]
+        Signals_Endpoint["Signals Endpoint"]
+    end
+
+    subgraph "Service Layer"
+        Signal_Service["Signal Service"]
+        Data_Orchestrator["Data Orchestrator"]
+    end
+    
+    subgraph "Data Provider Layer"
+        yfinance_Provider["yfinance Provider"]
+        AlphaVantage_Provider["AlphaVantage Provider"]
+    end
+    
+    subgraph "Data Access Layer"
+        Asset_CRUD["Asset CRUD"]
+        Database["Database (PostgreSQL)"]
+    end
+
+    FastAPI_App -- "routes to" --> Signals_Endpoint
+    Signals_Endpoint -- "uses" --> Signal_Service
+    Signal_Service -- "uses" --> Data_Orchestrator
+    Signal_Service -- "uses for asset_type lookup" --> Asset_CRUD
+    
+    Data_Orchestrator -- "uses (primary)" --> yfinance_Provider
+    Data_Orchestrator -- "uses (fallback)" --> AlphaVantage_Provider
+
+    Asset_CRUD -- "interacts with" --> Database
+    
+    style yfinance_Provider fill:#e6f3ff,stroke:#36c
+    style AlphaVantage_Provider fill:#e6f3ff,stroke:#36c
+    style Asset_CRUD fill:#f0e6ff,stroke:#639
+    style Database fill:#f0e6ff,stroke:#639
+```
+
+### Backend Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant API as "/api/v1/signals/{symbol}"
+    participant SigSvc as "SignalService"
+    participant AssetCRUD as "Asset CRUD Module"
+    participant DB as "Database"
+    participant DataOrc as "DataOrchestrator"
+    participant YFProv as "yfinance Provider"
+
+    API->>SigSvc: get_sma_crossover_signal("AAPL", short=20, long=50)
+    
+    Note right of SigSvc: Need asset_type to fetch correct historical data.
+    SigSvc->>AssetCRUD: get_asset_by_symbol("AAPL")
+    
+    AssetCRUD->>DB: SELECT * FROM assets WHERE symbol = 'AAPL'
+    DB-->>AssetCRUD: Returns Asset(asset_type='stock')
+    AssetCRUD-->>SigSvc: Returns Asset Model
+
+    SigSvc->>DataOrc: get_historical_data("AAPL", asset_type='stock', outputsize="full")
+    
+    Note right of DataOrc: Checks Redis cache first. On miss...
+    DataOrc->>YFProv: fetch_yf_historical_data("AAPL", asset_type='stock', period="max")
+    
+    Note right of YFProv: Makes live call to Yahoo Finance API.
+    YFProv-->>DataOrc: Returns List[HistoricalPricePoint]
+    
+    Note right of DataOrc: Sets the result to Redis cache.
+    DataOrc-->>SigSvc: Returns List[HistoricalPricePoint]
+    
+    Note right of SigSvc: 1. Calculates 20-day SMA.<br/>2. Calculates 50-day SMA.<br/>3. Finds crossover points.
+    SigSvc-->>API: Returns { historical_data, signals }
+```
